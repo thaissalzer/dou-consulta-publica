@@ -165,7 +165,7 @@ export default function Home() {
                 className="text-2xl md:text-3xl font-bold text-foreground mb-2"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
-                Buscar Consultas Públicas
+                Buscar Consultas Públicas e Tomada de Subsídios
               </h2>
               <p className="text-muted-foreground text-sm md:text-base" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
                 Encontre todas as consultas públicas publicadas no DOU em uma data específica
