@@ -14,3 +14,9 @@
 - [x] Frontend: adicionar seletor de órgão acima do seletor de data
 - [x] Frontend: atualizar query para incluir órgão como parâmetro
 - [ ] Testar filtro com dados reais (bloqueado por erro de conectividade ao DOU)
+
+## Novo Requisito (27/03/2026)
+- [x] Backend: adicionar busca por "tomada de subsídios"
+- [x] Backend: refatorar para aceitar tipo de busca como parâmetro
+- [x] Frontend: adicionar seletor de tipo de busca (Consulta Pública / Tomada de Subsídios / Ambas)
+- [ ] Testar ambos os tipos de busca

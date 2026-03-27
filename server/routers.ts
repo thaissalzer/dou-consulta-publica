@@ -28,10 +28,18 @@ async function fetchDOUPage(
   publishFrom: string,
   publishTo: string,
   pageNum: number,
+  searchType: 'consulta-publica' | 'tomada-subsidios' | 'ambas' = 'consulta-publica',
   lastItem?: { id: string; displayDate: string }
 ): Promise<{ results: DOUResult[]; totalPages: number }> {
+  let searchQuery = '"CONSULTA PÚBLICA"';
+  if (searchType === 'tomada-subsidios') {
+    searchQuery = '"TOMADA DE SUBSÍDIOS"';
+  } else if (searchType === 'ambas') {
+    searchQuery = '("CONSULTA PÚBLICA" OR "TOMADA DE SUBSÍDIOS")';
+  }
+
   const params: Record<string, string> = {
-    q: '"CONSULTA PÚBLICA"',
+    q: searchQuery,
     exactDate: "personalizado",
     publishFrom,
     publishTo,
@@ -122,11 +130,12 @@ async function fetchDOUPage(
 
 async function searchDOU(
   publishFrom: string,
-  publishTo: string
+  publishTo: string,
+  searchType: 'consulta-publica' | 'tomada-subsidios' | 'ambas' = 'consulta-publica'
 ): Promise<DOUResult[]> {
   const allResults: DOUResult[] = [];
 
-  const firstPage = await fetchDOUPage(publishFrom, publishTo, 0);
+  const firstPage = await fetchDOUPage(publishFrom, publishTo, 0, searchType);
   allResults.push(...firstPage.results);
 
   const totalPages = firstPage.totalPages;
@@ -135,7 +144,7 @@ async function searchDOU(
     const lastItem = allResults[allResults.length - 1];
     if (!lastItem) break;
 
-    const page = await fetchDOUPage(publishFrom, publishTo, pageNum, {
+    const page = await fetchDOUPage(publishFrom, publishTo, pageNum, searchType, {
       id: lastItem.id,
       displayDate: (lastItem as any).display_date_sortable || "",
     });
@@ -176,10 +185,11 @@ export const appRouter = router({
         z.object({
           date: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA"),
           orgao: z.string().optional(),
+          searchType: z.enum(['consulta-publica', 'tomada-subsidios', 'ambas']).default('consulta-publica'),
         })
       )
       .query(async ({ input }) => {
-        const results = await searchDOU(input.date, input.date);
+        const results = await searchDOU(input.date, input.date, input.searchType);
 
         let filtered = results.map((r) => ({
           ...r,
@@ -198,10 +208,11 @@ export const appRouter = router({
       .input(
         z.object({
           date: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA"),
+          searchType: z.enum(['consulta-publica', 'tomada-subsidios', 'ambas']).default('consulta-publica'),
         })
       )
       .query(async ({ input }) => {
-        const results = await searchDOU(input.date, input.date);
+        const results = await searchDOU(input.date, input.date, input.searchType);
 
         // Extrair órgãos únicos
         const orgaosSet = new Set<string>();

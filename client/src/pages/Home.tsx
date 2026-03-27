@@ -66,6 +66,7 @@ function getSectionBadgeVariant(section: string): string {
 export default function Home() {
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [selectedOrgao, setSelectedOrgao] = useState<string>("todos");
+  const [searchType, setSearchType] = useState<'consulta-publica' | 'tomada-subsidios' | 'ambas'>('consulta-publica');
   const [searchTriggered, setSearchTriggered] = useState(false);
 
   const dateStr = useMemo(
@@ -78,7 +79,7 @@ export default function Home() {
     data: orgaos,
     isLoading: orgaosLoading,
   } = trpc.dou.getOrgaos.useQuery(
-    { date: dateStr },
+    { date: dateStr, searchType },
     { enabled: searchTriggered, staleTime: 5 * 60 * 1000 }
   );
 
@@ -88,7 +89,7 @@ export default function Home() {
     error,
     isFetching,
   } = trpc.dou.searchConsultasPublicas.useQuery(
-    { date: dateStr, orgao: selectedOrgao === "todos" ? undefined : selectedOrgao },
+    { date: dateStr, orgao: selectedOrgao === "todos" ? undefined : selectedOrgao, searchType },
     { enabled: searchTriggered, retry: 1, staleTime: 5 * 60 * 1000 }
   );
 
@@ -126,6 +127,10 @@ export default function Home() {
 
   const handleOrgaoChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedOrgao(e.target.value);
+  }, []);
+
+  const handleSearchTypeChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSearchType(e.target.value as 'consulta-publica' | 'tomada-subsidios' | 'ambas');
   }, []);
 
   return (
@@ -168,6 +173,23 @@ export default function Home() {
             </div>
 
             <div className="max-w-lg mx-auto">
+              {/* Seletor de tipo de busca */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-foreground mb-2" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
+                  Tipo de Busca
+                </label>
+                <select
+                  value={searchType}
+                  onChange={handleSearchTypeChange}
+                  className="w-full px-3 py-2 border border-input rounded-md bg-white text-foreground text-sm font-medium focus:outline-none focus:ring-2 focus:ring-gov-green focus:border-transparent"
+                  style={{ fontFamily: "'Source Sans 3', sans-serif" }}
+                >
+                  <option value="consulta-publica">Consultas Públicas</option>
+                  <option value="tomada-subsidios">Tomada de Subsídios</option>
+                  <option value="ambas">Ambas</option>
+                </select>
+              </div>
+
               {/* Seletor de órgão */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-foreground mb-2" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
