@@ -65,11 +65,21 @@ function getSectionBadgeVariant(section: string): string {
 
 export default function Home() {
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [selectedOrgao, setSelectedOrgao] = useState<string>("todos");
   const [searchTriggered, setSearchTriggered] = useState(false);
 
   const dateStr = useMemo(
     () => formatDateForAPI(selectedDate),
     [selectedDate]
+  );
+
+  // Buscar lista de órgãos
+  const {
+    data: orgaos,
+    isLoading: orgaosLoading,
+  } = trpc.dou.getOrgaos.useQuery(
+    { date: dateStr },
+    { enabled: searchTriggered, staleTime: 5 * 60 * 1000 }
   );
 
   const {
@@ -78,7 +88,7 @@ export default function Home() {
     error,
     isFetching,
   } = trpc.dou.searchConsultasPublicas.useQuery(
-    { date: dateStr },
+    { date: dateStr, orgao: selectedOrgao === "todos" ? undefined : selectedOrgao },
     { enabled: searchTriggered, retry: 1, staleTime: 5 * 60 * 1000 }
   );
 
@@ -112,6 +122,10 @@ export default function Home() {
   const handleToday = useCallback(() => {
     setSelectedDate(new Date());
     setSearchTriggered(false);
+  }, []);
+
+  const handleOrgaoChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedOrgao(e.target.value);
   }, []);
 
   return (
@@ -154,6 +168,30 @@ export default function Home() {
             </div>
 
             <div className="max-w-lg mx-auto">
+              {/* Seletor de órgão */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-foreground mb-2" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
+                  Órgão
+                </label>
+                <select
+                  value={selectedOrgao}
+                  onChange={handleOrgaoChange}
+                  className="w-full px-3 py-2 border border-input rounded-md bg-white text-foreground text-sm font-medium focus:outline-none focus:ring-2 focus:ring-gov-green focus:border-transparent"
+                  style={{ fontFamily: "'Source Sans 3', sans-serif" }}
+                >
+                  <option value="todos">Todos os órgãos</option>
+                  {orgaos && orgaos.length > 0 ? (
+                    orgaos.map((orgao) => (
+                      <option key={orgao} value={orgao}>
+                        {orgao}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>Nenhum órgão encontrado</option>
+                  )}
+                </select>
+              </div>
+
               <div className="flex items-center gap-2 mb-3">
                 <Button
                   variant="outline"

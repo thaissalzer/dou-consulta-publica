@@ -7,3 +7,10 @@
 - [x] Frontend: estados de loading, vazio e erro
 - [x] Frontend: responsividade mobile
 - [x] Testes: vitest para o endpoint de busca
+
+## Novo Requisito (24/03/2026)
+- [x] Backend: endpoint para retornar lista de órgãos únicos
+- [x] Backend: filtrar resultados por órgão selecionado
+- [x] Frontend: adicionar seletor de órgão acima do seletor de data
+- [x] Frontend: atualizar query para incluir órgão como parâmetro
+- [ ] Testar filtro com dados reais (bloqueado por erro de conectividade ao DOU)

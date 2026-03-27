@@ -175,15 +175,43 @@ export const appRouter = router({
       .input(
         z.object({
           date: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA"),
+          orgao: z.string().optional(),
         })
       )
       .query(async ({ input }) => {
         const results = await searchDOU(input.date, input.date);
 
-        return results.map((r) => ({
+        let filtered = results.map((r) => ({
           ...r,
           sectionLabel: SECTION_MAP[r.section] || r.section,
         }));
+
+        // Filtrar por órgão se selecionado
+        if (input.orgao && input.orgao !== "todos") {
+          filtered = filtered.filter((r) => r.orgPrincipal === input.orgao);
+        }
+
+        return filtered;
+      }),
+
+    getOrgaos: publicProcedure
+      .input(
+        z.object({
+          date: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA"),
+        })
+      )
+      .query(async ({ input }) => {
+        const results = await searchDOU(input.date, input.date);
+
+        // Extrair órgãos únicos
+        const orgaosSet = new Set<string>();
+        results.forEach((r) => {
+          if (r.orgPrincipal) {
+            orgaosSet.add(r.orgPrincipal);
+          }
+        });
+
+        return Array.from(orgaosSet).sort();
       }),
   }),
 });
