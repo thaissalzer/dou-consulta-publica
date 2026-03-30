@@ -25,4 +25,16 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+export const douPublicacoes = mysqlTable("dou_publicacoes", {
+  id: int("id").autoincrement().primaryKey(),
+  douId: varchar("douId", { length: 255 }).notNull().unique(),
+  titulo: text("titulo").notNull(),
+  orgao: varchar("orgao", { length: 255 }).notNull(),
+  tipo: varchar("tipo", { length: 50 }).notNull(),
+  dataPublicacao: timestamp("dataPublicacao").notNull(),
+  dataCriacao: timestamp("dataCriacao").defaultNow().notNull(),
+  dataEmailEnviado: timestamp("dataEmailEnviado"),
+});
+
+export type DOUPublicacao = typeof douPublicacoes.$inferSelect;
+export type InsertDOUPublicacao = typeof douPublicacoes.$inferInsert;

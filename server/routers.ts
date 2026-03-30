@@ -128,7 +128,7 @@ async function fetchDOUPage(
   return { results, totalPages };
 }
 
-async function searchDOU(
+export async function searchDOU(
   publishFrom: string,
   publishTo: string,
   searchType: 'consulta-publica' | 'tomada-subsidios' | 'ambas' = 'consulta-publica'

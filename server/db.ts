@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, douPublicacoes, InsertDOUPublicacao } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,53 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function saveDOUPublicacao(publicacao: InsertDOUPublicacao): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot save DOU publicacao: database not available");
+    return;
+  }
+
+  try {
+    await db.insert(douPublicacoes).values(publicacao).onDuplicateKeyUpdate({
+      set: { dataCriacao: new Date() },
+    });
+  } catch (error) {
+    console.error("[Database] Failed to save DOU publicacao:", error);
+    throw error;
+  }
+}
+
+export async function getUnsentPublicacoes() {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot get unsent publicacoes: database not available");
+    return [];
+  }
+
+  try {
+    return await db.select().from(douPublicacoes).where(
+      isNull(douPublicacoes.dataEmailEnviado)
+    );
+  } catch (error) {
+    console.error("[Database] Failed to get unsent publicacoes:", error);
+    return [];
+  }
+}
+
+export async function markPublicacaoAsEmailSent(publicacaoId: number): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot mark publicacao as sent: database not available");
+    return;
+  }
+
+  try {
+    await db.update(douPublicacoes)
+      .set({ dataEmailEnviado: new Date() })
+      .where(eq(douPublicacoes.id, publicacaoId));
+  } catch (error) {
+    console.error("[Database] Failed to mark publicacao as sent:", error);
+    throw error;
+  }
+}

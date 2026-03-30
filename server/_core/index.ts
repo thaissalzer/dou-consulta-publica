@@ -7,6 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { runDailyNotificationJob } from "../jobs/daily-notification";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -60,6 +61,30 @@ async function startServer() {
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
   });
+
+  scheduleDailyJob();
+}
+
+function scheduleDailyJob() {
+  const now = new Date();
+  const scheduledTime = new Date();
+  scheduledTime.setHours(9, 0, 0, 0);
+
+  if (now > scheduledTime) {
+    scheduledTime.setDate(scheduledTime.getDate() + 1);
+  }
+
+  const timeUntilScheduled = scheduledTime.getTime() - now.getTime();
+  console.log(`[Job Scheduler] Próxima execução em ${scheduledTime.toLocaleString()}`);
+
+  setTimeout(() => {
+    console.log("[Job Scheduler] Executando job diário...");
+    runDailyNotificationJob().catch(console.error);
+    setInterval(() => {
+      console.log("[Job Scheduler] Executando job diário...");
+      runDailyNotificationJob().catch(console.error);
+    }, 24 * 60 * 60 * 1000);
+  }, timeUntilScheduled);
 }
 
 startServer().catch(console.error);

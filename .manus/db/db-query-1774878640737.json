@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `dou_publicacoes` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`douId` varchar(255) NOT NULL,\n\t`titulo` text NOT NULL,\n\t`orgao` varchar(255) NOT NULL,\n\t`tipo` varchar(50) NOT NULL,\n\t`dataPublicacao` timestamp NOT NULL,\n\t`dataCriacao` timestamp NOT NULL DEFAULT (now()),\n\t`dataEmailEnviado` timestamp,\n\tCONSTRAINT `dou_publicacoes_id` PRIMARY KEY(`id`),\n\tCONSTRAINT `dou_publicacoes_douId_unique` UNIQUE(`douId`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2bbquj4Y6sTJTAT.ebb437b61c97 --database MoTM2brtDWgBAJaKHXLrq6 --execute CREATE TABLE `dou_publicacoes` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`douId` varchar(255) NOT NULL,\n\t`titulo` text NOT NULL,\n\t`orgao` varchar(255) NOT NULL,\n\t`tipo` varchar(50) NOT NULL,\n\t`dataPublicacao` timestamp NOT NULL,\n\t`dataCriacao` timestamp NOT NULL DEFAULT (now()),\n\t`dataEmailEnviado` timestamp,\n\tCONSTRAINT `dou_publicacoes_id` PRIMARY KEY(`id`),\n\tCONSTRAINT `dou_publicacoes_douId_unique` UNIQUE(`douId`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 398
+}

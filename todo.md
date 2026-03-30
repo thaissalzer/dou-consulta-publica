@@ -20,3 +20,10 @@
 - [x] Backend: refatorar para aceitar tipo de busca como parâmetro
 - [x] Frontend: adicionar seletor de tipo de busca (Consulta Pública / Tomada de Subsídios / Ambas)
 - [ ] Testar ambos os tipos de busca
+
+## Novo Requisito (27/03/2026 - Notificações por Email)
+- [x] Database: criar tabela para rastrear publicações já processadas
+- [x] Backend: criar job diário que busca novas publicações
+- [x] Backend: implementar lógica de detecção de novos resultados
+- [x] Backend: configurar envio de emails com resultados
+- [x] Testar notificações com dados reais
