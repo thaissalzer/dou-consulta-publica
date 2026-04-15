@@ -255,13 +255,15 @@ export const appRouter = router({
       .input(
         z.object({
           date: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA"),
+          dateEnd: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA").optional(),
           orgao: z.string().optional(),
           documentType: z.string().optional(),
           searchType: z.enum(['consulta-publica', 'tomada-subsidios', 'ambas']).default('consulta-publica'),
         })
       )
       .query(async ({ input }) => {
-        const results = await searchDOU(input.date, input.date, input.searchType);
+        const endDate = input.dateEnd || input.date;
+        const results = await searchDOU(input.date, endDate, input.searchType);
 
         let filtered = results.map((r) => ({
           ...r,
@@ -284,12 +286,14 @@ export const appRouter = router({
       .input(
         z.object({
           date: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA"),
+          dateEnd: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA").optional(),
           documentType: z.string().optional(),
           searchType: z.enum(['consulta-publica', 'tomada-subsidios', 'ambas']).default('consulta-publica'),
         })
       )
       .query(async ({ input }) => {
-        const results = await searchDOU(input.date, input.date, input.searchType);
+        const endDate = input.dateEnd || input.date;
+        const results = await searchDOU(input.date, endDate, input.searchType);
 
         // Extrair órgãos únicos
         const orgaosSet = new Set<string>();
@@ -306,12 +310,14 @@ export const appRouter = router({
       .input(
         z.object({
           date: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA"),
+          dateEnd: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA").optional(),
           documentType: z.string().optional(),
           searchType: z.enum(['consulta-publica', 'tomada-subsidios', 'ambas']).default('consulta-publica'),
         })
       )
       .query(async ({ input }) => {
-        const results = await searchDOU(input.date, input.date, input.searchType);
+        const endDate = input.dateEnd || input.date;
+        const results = await searchDOU(input.date, endDate, input.searchType);
 
         const typesSet = new Set<string>();
         results.forEach((r) => {

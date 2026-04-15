@@ -64,15 +64,23 @@ function getSectionBadgeVariant(section: string): string {
 }
 
 export default function Home() {
+  const [dateMode, setDateMode] = useState<'single' | 'range'>('single');
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [selectedStartDate, setSelectedStartDate] = useState<Date>(() => new Date());
+  const [selectedEndDate, setSelectedEndDate] = useState<Date>(() => new Date());
   const [selectedOrgao, setSelectedOrgao] = useState<string>("todos");
   const [searchType, setSearchType] = useState<'consulta-publica' | 'tomada-subsidios' | 'ambas'>('consulta-publica');
   const [selectedDocumentType, setSelectedDocumentType] = useState<string>("todos");
   const [searchTriggered, setSearchTriggered] = useState(false);
 
   const dateStr = useMemo(
-    () => formatDateForAPI(selectedDate),
-    [selectedDate]
+    () => dateMode === 'single' ? formatDateForAPI(selectedDate) : formatDateForAPI(selectedStartDate),
+    [selectedDate, selectedStartDate, dateMode]
+  );
+
+  const endDateStr = useMemo(
+    () => dateMode === 'range' ? formatDateForAPI(selectedEndDate) : formatDateForAPI(selectedDate),
+    [selectedDate, selectedEndDate, dateMode]
   );
 
   // Buscar lista de órgãos
@@ -80,7 +88,7 @@ export default function Home() {
     data: orgaos,
     isLoading: orgaosLoading,
   } = trpc.dou.getOrgaos.useQuery(
-    { date: dateStr, searchType },
+    { date: dateStr, dateEnd: endDateStr, searchType },
     { enabled: searchTriggered, staleTime: 5 * 60 * 1000 }
   );
 
@@ -89,7 +97,7 @@ export default function Home() {
     data: documentTypes,
     isLoading: documentTypesLoading,
   } = trpc.dou.getDocumentTypes.useQuery(
-    { date: dateStr, searchType },
+    { date: dateStr, dateEnd: endDateStr, searchType },
     { enabled: searchTriggered, staleTime: 5 * 60 * 1000 }
   );
 
@@ -99,7 +107,7 @@ export default function Home() {
     error,
     isFetching,
   } = trpc.dou.searchConsultasPublicas.useQuery(
-    { date: dateStr, orgao: selectedOrgao === "todos" ? undefined : selectedOrgao, searchType, documentType: selectedDocumentType === "todos" ? undefined : selectedDocumentType },
+    { date: dateStr, dateEnd: endDateStr, orgao: selectedOrgao === "todos" ? undefined : selectedOrgao, searchType, documentType: selectedDocumentType === "todos" ? undefined : selectedDocumentType },
     { enabled: searchTriggered, retry: 1, staleTime: 5 * 60 * 1000 }
   );
 
@@ -252,38 +260,90 @@ export default function Home() {
                 </select>
               </div>
 
-              <div className="flex items-center gap-2 mb-3">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-10 w-10 shrink-0"
-                  onClick={handlePrevDay}
-                  title="Dia anterior"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-
-                <div className="relative flex-1">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                  <Input
-                    type="date"
-                    value={formatInputDate(selectedDate)}
-                    onChange={handleDateChange}
-                    className="pl-10 h-10 text-center font-medium"
-                    max={formatInputDate(new Date())}
-                  />
+              {/* Seletor de modo de data */}
+              <div className="mb-4">
+                <div className="flex gap-2">
+                  <Button
+                    variant={dateMode === 'single' ? 'default' : 'outline'}
+                    className="flex-1 h-9 text-sm"
+                    onClick={() => setDateMode('single')}
+                  >
+                    Data Única
+                  </Button>
+                  <Button
+                    variant={dateMode === 'range' ? 'default' : 'outline'}
+                    className="flex-1 h-9 text-sm"
+                    onClick={() => setDateMode('range')}
+                  >
+                    Intervalo
+                  </Button>
                 </div>
-
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-10 w-10 shrink-0"
-                  onClick={handleNextDay}
-                  title="Próximo dia"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
               </div>
+
+              {/* Data única */}
+              {dateMode === 'single' && (
+                <div className="flex items-center gap-2 mb-3">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-10 w-10 shrink-0"
+                    onClick={handlePrevDay}
+                    title="Dia anterior"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+
+                  <div className="relative flex-1">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      type="date"
+                      value={formatInputDate(selectedDate)}
+                      onChange={handleDateChange}
+                      className="pl-10 h-10 text-center font-medium"
+                      max={formatInputDate(new Date())}
+                    />
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-10 w-10 shrink-0"
+                    onClick={handleNextDay}
+                    title="Próximo dia"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Intervalo de datas */}
+              {dateMode === 'range' && (
+                <div className="space-y-2 mb-3">
+                  <div className="flex gap-2 items-center">
+                    <div className="relative flex-1">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                      <Input
+                        type="date"
+                        value={formatInputDate(selectedStartDate)}
+                        onChange={(e) => setSelectedStartDate(parseInputDate(e.target.value))}
+                        className="pl-10 h-10 text-center font-medium"
+                        max={formatInputDate(new Date())}
+                      />
+                    </div>
+                    <span className="text-muted-foreground font-medium">até</span>
+                    <div className="relative flex-1">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                      <Input
+                        type="date"
+                        value={formatInputDate(selectedEndDate)}
+                        onChange={(e) => setSelectedEndDate(parseInputDate(e.target.value))}
+                        className="pl-10 h-10 text-center font-medium"
+                        max={formatInputDate(new Date())}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-2">
                 <Button

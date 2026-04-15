@@ -34,3 +34,9 @@
 - [x] Backend: excluir documentos indesejados (avisos genéricos, editais, portarias, registros)
 - [x] Frontend: adicionar seletor de tipo de documento
 - [ ] Testar filtros com URLs fornecidas
+
+## Novo Requisito (15/04/2026 - Busca por Intervalo de Datas)
+- [x] Frontend: adicionar campos de data inicial e data final
+- [x] Frontend: atualizar lógica para buscar múltiplas datas
+- [x] Backend: processar intervalo de datas e combinar resultados
+- [ ] Testar intervalo de datas com diferentes períodos
