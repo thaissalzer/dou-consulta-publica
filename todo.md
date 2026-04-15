@@ -27,3 +27,10 @@
 - [x] Backend: implementar lógica de detecção de novos resultados
 - [x] Backend: configurar envio de emails com resultados
 - [x] Testar notificações com dados reais
+
+## Novo Requisito (30/03/2026 - Filtro por Tipo de Documento)
+- [x] Backend: analisar padrões e criar função de extração de tipo de documento
+- [x] Backend: implementar filtros para incluir apenas Consultas Públicas e Tomadas de Subsídios legítimas
+- [x] Backend: excluir documentos indesejados (avisos genéricos, editais, portarias, registros)
+- [x] Frontend: adicionar seletor de tipo de documento
+- [ ] Testar filtros com URLs fornecidas

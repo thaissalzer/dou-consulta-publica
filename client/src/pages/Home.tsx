@@ -67,6 +67,7 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [selectedOrgao, setSelectedOrgao] = useState<string>("todos");
   const [searchType, setSearchType] = useState<'consulta-publica' | 'tomada-subsidios' | 'ambas'>('consulta-publica');
+  const [selectedDocumentType, setSelectedDocumentType] = useState<string>("todos");
   const [searchTriggered, setSearchTriggered] = useState(false);
 
   const dateStr = useMemo(
@@ -83,13 +84,22 @@ export default function Home() {
     { enabled: searchTriggered, staleTime: 5 * 60 * 1000 }
   );
 
+  // Buscar lista de tipos de documento
+  const {
+    data: documentTypes,
+    isLoading: documentTypesLoading,
+  } = trpc.dou.getDocumentTypes.useQuery(
+    { date: dateStr, searchType },
+    { enabled: searchTriggered, staleTime: 5 * 60 * 1000 }
+  );
+
   const {
     data: results,
     isLoading,
     error,
     isFetching,
   } = trpc.dou.searchConsultasPublicas.useQuery(
-    { date: dateStr, orgao: selectedOrgao === "todos" ? undefined : selectedOrgao, searchType },
+    { date: dateStr, orgao: selectedOrgao === "todos" ? undefined : selectedOrgao, searchType, documentType: selectedDocumentType === "todos" ? undefined : selectedDocumentType },
     { enabled: searchTriggered, retry: 1, staleTime: 5 * 60 * 1000 }
   );
 
@@ -131,6 +141,10 @@ export default function Home() {
 
   const handleSearchTypeChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setSearchType(e.target.value as 'consulta-publica' | 'tomada-subsidios' | 'ambas');
+  }, []);
+
+  const handleDocumentTypeChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedDocumentType(e.target.value);
   }, []);
 
   return (
@@ -210,6 +224,30 @@ export default function Home() {
                     ))
                   ) : (
                     <option disabled>Nenhum órgão encontrado</option>
+                  )}
+                </select>
+              </div>
+
+              {/* Seletor de tipo de documento */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-foreground mb-2" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
+                  Tipo de Documento
+                </label>
+                <select
+                  value={selectedDocumentType}
+                  onChange={handleDocumentTypeChange}
+                  className="w-full px-3 py-2 border border-input rounded-md bg-white text-foreground text-sm font-medium focus:outline-none focus:ring-2 focus:ring-gov-green focus:border-transparent"
+                  style={{ fontFamily: "'Source Sans 3', sans-serif" }}
+                >
+                  <option value="todos">Todos os tipos</option>
+                  {documentTypes && documentTypes.length > 0 ? (
+                    documentTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>Nenhum tipo encontrado</option>
                   )}
                 </select>
               </div>

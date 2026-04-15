@@ -22,6 +22,68 @@ interface DOUResult {
   orgSubordinado?: string;
   editionNumber?: string;
   numberPage?: string;
+  documentType?: string;
+}
+
+type DocumentType = 
+  | 'CONSULTA PÚBLICA'
+  | 'AVISO DE CONSULTA PÚBLICA'
+  | 'TOMADA DE SUBSÍDIOS'
+  | 'AVISO DE TOMADA DE SUBSÍDIOS'
+  | 'AVISO DE PRORROGAÇÃO'
+  | 'AVISO DE REABERTURA'
+  | 'OUTRO';
+
+function extractDocumentType(url: string, title: string): DocumentType {
+  const urlLower = url.toLowerCase();
+  const titleLower = title.toLowerCase();
+
+  // Excluir documentos indesejados
+  if (urlLower.includes('portaria') || 
+      urlLower.includes('edital-de-notificacao') || 
+      urlLower.includes('aviso-de-registro-de-diplomas') || 
+      urlLower.includes('pauta-da')) {
+    return 'OUTRO';
+  }
+
+  // Identificar tipo de documento
+  if (urlLower.includes('consulta-publica')) {
+    if (urlLower.includes('aviso-de')) {
+      return 'AVISO DE CONSULTA PÚBLICA';
+    }
+    return 'CONSULTA PÚBLICA';
+  }
+
+  if (urlLower.includes('tomada-de-subsidios')) {
+    if (urlLower.includes('aviso-de')) {
+      return 'AVISO DE TOMADA DE SUBSÍDIOS';
+    }
+    return 'TOMADA DE SUBSÍDIOS';
+  }
+
+  if (urlLower.includes('aviso-de-prorrogacao')) {
+    if (titleLower.includes('consulta pública') || titleLower.includes('subsídios')) {
+      return 'AVISO DE PRORROGAÇÃO';
+    }
+  }
+
+  if (urlLower.includes('aviso-de-reabertura') && titleLower.includes('consulta pública')) {
+    return 'AVISO DE REABERTURA';
+  }
+
+  if (urlLower.includes('aviso-de-consulta-publica')) {
+    return 'AVISO DE CONSULTA PÚBLICA';
+  }
+
+  if (urlLower.includes('aviso-de-tomada-de-subsidios')) {
+    return 'AVISO DE TOMADA DE SUBSÍDIOS';
+  }
+
+  return 'OUTRO';
+}
+
+function isValidDocument(documentType: DocumentType): boolean {
+  return documentType !== 'OUTRO';
 }
 
 async function fetchDOUPage(
@@ -111,19 +173,28 @@ async function fetchDOUPage(
     return { results: [], totalPages: 0 };
   }
 
-  const results: DOUResult[] = searchResults.map((content: any) => ({
-    section: (content.pubName || "").toLowerCase(),
-    title: (content.title || "").replace(/<[^>]*>/g, ""),
-    href: DOU_WEB_BASE_URL + (content.urlTitle || ""),
-    abstract: (content.content || "").replace(/<[^>]*>/g, ""),
-    date: content.pubDate || "",
-    id: content.classPK || "",
-    orgPrincipal: content.hierarchyList?.[0] || "",
-    orgSubordinado: content.hierarchyList?.slice(1).join(" > ") || "",
-    editionNumber: content.editionNumber || "",
-    numberPage: content.numberPage || "",
-    display_date_sortable: content.displayDateSortable || "",
-  }));
+  const results: DOUResult[] = searchResults
+    .map((content: any) => {
+      const urlTitle = content.urlTitle || "";
+      const title = (content.title || "").replace(/<[^>]*>/g, "");
+      const documentType = extractDocumentType(urlTitle, title);
+      
+      return {
+        section: (content.pubName || "").toLowerCase(),
+        title,
+        href: DOU_WEB_BASE_URL + urlTitle,
+        abstract: (content.content || "").replace(/<[^>]*>/g, ""),
+        date: content.pubDate || "",
+        id: content.classPK || "",
+        orgPrincipal: content.hierarchyList?.[0] || "",
+        orgSubordinado: content.hierarchyList?.slice(1).join(" > ") || "",
+        editionNumber: content.editionNumber || "",
+        numberPage: content.numberPage || "",
+        display_date_sortable: content.displayDateSortable || "",
+        documentType,
+      };
+    })
+    .filter((result) => isValidDocument(result.documentType as DocumentType));
 
   return { results, totalPages };
 }
@@ -185,6 +256,7 @@ export const appRouter = router({
         z.object({
           date: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA"),
           orgao: z.string().optional(),
+          documentType: z.string().optional(),
           searchType: z.enum(['consulta-publica', 'tomada-subsidios', 'ambas']).default('consulta-publica'),
         })
       )
@@ -197,6 +269,10 @@ export const appRouter = router({
         }));
 
         // Filtrar por órgão se selecionado
+        // Filtrar por tipo de documento se selecionado
+        if (input.documentType && input.documentType !== "todos") {
+          filtered = filtered.filter((r) => r.documentType === input.documentType);
+        }
         if (input.orgao && input.orgao !== "todos") {
           filtered = filtered.filter((r) => r.orgPrincipal === input.orgao);
         }
@@ -208,6 +284,7 @@ export const appRouter = router({
       .input(
         z.object({
           date: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA"),
+          documentType: z.string().optional(),
           searchType: z.enum(['consulta-publica', 'tomada-subsidios', 'ambas']).default('consulta-publica'),
         })
       )
@@ -223,6 +300,27 @@ export const appRouter = router({
         });
 
         return Array.from(orgaosSet).sort();
+      }),
+
+    getDocumentTypes: publicProcedure
+      .input(
+        z.object({
+          date: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA"),
+          documentType: z.string().optional(),
+          searchType: z.enum(['consulta-publica', 'tomada-subsidios', 'ambas']).default('consulta-publica'),
+        })
+      )
+      .query(async ({ input }) => {
+        const results = await searchDOU(input.date, input.date, input.searchType);
+
+        const typesSet = new Set<string>();
+        results.forEach((r) => {
+          if (r.documentType) {
+            typesSet.add(r.documentType);
+          }
+        });
+
+        return Array.from(typesSet).sort();
       }),
   }),
 });
