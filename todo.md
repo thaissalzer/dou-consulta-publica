@@ -64,4 +64,5 @@
 - [x] Backend: extrair Art. 1º do conteúdo do documento
 - [x] Backend: procurar por "consulta pública" e "tomada de subsídios" no Art. 1º
 - [x] Implementação: requisição adicional apenas para Portarias sem os termos no título/ementa
-- [ ] Testar com Portaria MME nº 906 de 18/03/2026
+- [x] Corrigir regex para capturar Art. 1º com quebras de linha
+- [ ] Testar com Portaria MME nº 900 de 27/02/2026

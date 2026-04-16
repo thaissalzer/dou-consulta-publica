@@ -52,9 +52,15 @@ async function extractArtigo1FromDocument(href: string): Promise<string> {
     
     // Procurar por "Art. 1º" ou "Art. 1" no conteúdo
     const text = $.text();
-    const art1Match = text.match(/Art\.\s*1º?[^A-Z]*?(?=Art\.\s*\d|$)/i);
+    // Usar regex que captura quebras de linha e espaços, até o próximo artigo ou fim
+    const art1Match = text.match(/Art\.\s*1º?[\s\S]*?(?=Art\.\s*\d|$)/i);
     
-    return art1Match ? art1Match[0] : '';
+    if (art1Match) {
+      // Limitar a 1000 caracteres para evitar capturar todo o documento
+      return art1Match[0].substring(0, 1000);
+    }
+    
+    return '';
   } catch (error) {
     console.error('[DOU] Erro ao extrair Art. 1º:', error);
     return '';
