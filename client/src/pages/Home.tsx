@@ -69,7 +69,7 @@ export default function Home() {
   const [selectedStartDate, setSelectedStartDate] = useState<Date>(() => new Date());
   const [selectedEndDate, setSelectedEndDate] = useState<Date>(() => new Date());
   const [selectedOrgao, setSelectedOrgao] = useState<string>("todos");
-  const [searchType, setSearchType] = useState<'consulta-publica' | 'tomada-subsidios' | 'ambas'>('ambas');
+  const [searchType, setSearchType] = useState<'consulta-publica' | 'tomada-subsidios'>('consulta-publica');
   const [selectedDocumentType, setSelectedDocumentType] = useState<string>("todos");
   const [searchTriggered, setSearchTriggered] = useState(false);
 
@@ -148,7 +148,7 @@ export default function Home() {
   }, []);
 
   const handleSearchTypeChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSearchType(e.target.value as 'consulta-publica' | 'tomada-subsidios' | 'ambas');
+    setSearchType(e.target.value as 'consulta-publica' | 'tomada-subsidios');
   }, []);
 
   const handleDocumentTypeChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -206,7 +206,6 @@ export default function Home() {
                   className="w-full px-3 py-2 border border-input rounded-md bg-white text-foreground text-sm font-medium focus:outline-none focus:ring-2 focus:ring-gov-green focus:border-transparent"
                   style={{ fontFamily: "'Source Sans 3', sans-serif" }}
                 >
-                  <option value="ambas">Ambas</option>
                   <option value="consulta-publica">Consultas Públicas</option>
                   <option value="tomada-subsidios">Tomada de Subsídios</option>
                 </select>

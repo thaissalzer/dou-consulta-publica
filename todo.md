@@ -44,3 +44,8 @@
 ## Ajuste (16/04/2026)
 - [x] Reordenar opções de "Tipo de Busca" para "Ambas" aparecer primeiro
 - [x] Definir "Ambas" como opção padrão
+
+## Ajuste (16/04/2026 - Remover "Ambas")
+- [x] Remover opção "Ambas" do filtro "Tipo de Busca"
+- [x] Definir "Consultas Públicas" como opção padrão
+- [x] Atualizar backend para remover suporte a 'ambas'

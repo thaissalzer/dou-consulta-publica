@@ -258,7 +258,7 @@ export const appRouter = router({
           dateEnd: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA").optional(),
           orgao: z.string().optional(),
           documentType: z.string().optional(),
-          searchType: z.enum(['consulta-publica', 'tomada-subsidios', 'ambas']).default('consulta-publica'),
+          searchType: z.enum(['consulta-publica', 'tomada-subsidios']).default('consulta-publica'),
         })
       )
       .query(async ({ input }) => {
@@ -288,7 +288,7 @@ export const appRouter = router({
           date: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA"),
           dateEnd: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA").optional(),
           documentType: z.string().optional(),
-          searchType: z.enum(['consulta-publica', 'tomada-subsidios', 'ambas']).default('consulta-publica'),
+          searchType: z.enum(['consulta-publica', 'tomada-subsidios']).default('consulta-publica'),
         })
       )
       .query(async ({ input }) => {
@@ -312,7 +312,7 @@ export const appRouter = router({
           date: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA"),
           dateEnd: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA").optional(),
           documentType: z.string().optional(),
-          searchType: z.enum(['consulta-publica', 'tomada-subsidios', 'ambas']).default('consulta-publica'),
+          searchType: z.enum(['consulta-publica', 'tomada-subsidios']).default('consulta-publica'),
         })
       )
       .query(async ({ input }) => {
