@@ -54,3 +54,8 @@
 - [x] Backend: atualizar lógica para incluir Portarias que mencionem "CONSULTA PÚblica" ou "TOMADA DE SUBSÍDIOS"
 - [x] Backend: adicionar tipo de documento "PORTARIA" aos resultados quando relevante
 - [ ] Testar com URLs fornecidas
+
+## Novo Requisito (16/04/2026 - Buscar em Título e Ementa)
+- [x] Backend: atualizar extractDocumentType para procurar em título E ementa
+- [x] Backend: passar ementa (abstract) para a função de extração
+- [ ] Testar com Portaria nº 86 de 23/02/2026

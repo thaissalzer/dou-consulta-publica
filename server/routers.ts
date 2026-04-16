@@ -35,13 +35,15 @@ type DocumentType =
   | 'PORTARIA'
   | 'OUTRO';
 
-function extractDocumentType(url: string, title: string): DocumentType {
+function extractDocumentType(url: string, title: string, abstract: string = ''): DocumentType {
   const urlLower = url.toLowerCase();
   const titleLower = title.toLowerCase();
 
-  // Incluir Portarias que mencionem Consultas Públicas ou Tomadas de Subsídios
+  // Incluir Portarias que mencionem Consultas Públicas ou Tomadas de Subsídios (em título ou ementa)
   if (urlLower.includes('portaria')) {
-    if (titleLower.includes('consulta pública') || titleLower.includes('tomada de subsídios')) {
+    const abstractLower = abstract.toLowerCase();
+    if (titleLower.includes('consulta pública') || titleLower.includes('tomada de subsídios') ||
+        abstractLower.includes('consulta pública') || abstractLower.includes('tomada de subsídios')) {
       return 'PORTARIA';
     }
     return 'OUTRO';
@@ -185,7 +187,8 @@ async function fetchDOUPage(
     .map((content: any) => {
       const urlTitle = content.urlTitle || "";
       const title = (content.title || "").replace(/<[^>]*>/g, "");
-      const documentType = extractDocumentType(urlTitle, title);
+      const abstract = (content.content || "").replace(/<[^>]*>/g, "");
+      const documentType = extractDocumentType(urlTitle, title, abstract);
       
       return {
         section: (content.pubName || "").toLowerCase(),
