@@ -69,7 +69,7 @@ export default function Home() {
   const [selectedStartDate, setSelectedStartDate] = useState<Date>(() => new Date());
   const [selectedEndDate, setSelectedEndDate] = useState<Date>(() => new Date());
   const [selectedOrgao, setSelectedOrgao] = useState<string>("todos");
-  const [searchType, setSearchType] = useState<'consulta-publica' | 'tomada-subsidios' | 'ambas'>('consulta-publica');
+  const [searchType, setSearchType] = useState<'consulta-publica' | 'tomada-subsidios' | 'ambas'>('ambas');
   const [selectedDocumentType, setSelectedDocumentType] = useState<string>("todos");
   const [searchTriggered, setSearchTriggered] = useState(false);
 
@@ -206,9 +206,9 @@ export default function Home() {
                   className="w-full px-3 py-2 border border-input rounded-md bg-white text-foreground text-sm font-medium focus:outline-none focus:ring-2 focus:ring-gov-green focus:border-transparent"
                   style={{ fontFamily: "'Source Sans 3', sans-serif" }}
                 >
+                  <option value="ambas">Ambas</option>
                   <option value="consulta-publica">Consultas Públicas</option>
                   <option value="tomada-subsidios">Tomada de Subsídios</option>
-                  <option value="ambas">Ambas</option>
                 </select>
               </div>
 

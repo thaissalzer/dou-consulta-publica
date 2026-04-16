@@ -40,3 +40,7 @@
 - [x] Frontend: atualizar lógica para buscar múltiplas datas
 - [x] Backend: processar intervalo de datas e combinar resultados
 - [ ] Testar intervalo de datas com diferentes períodos
+
+## Ajuste (16/04/2026)
+- [x] Reordenar opções de "Tipo de Busca" para "Ambas" aparecer primeiro
+- [x] Definir "Ambas" como opção padrão
