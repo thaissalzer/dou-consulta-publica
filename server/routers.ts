@@ -32,15 +32,23 @@ type DocumentType =
   | 'AVISO DE TOMADA DE SUBSÍDIOS'
   | 'AVISO DE PRORROGAÇÃO'
   | 'AVISO DE REABERTURA'
+  | 'PORTARIA'
   | 'OUTRO';
 
 function extractDocumentType(url: string, title: string): DocumentType {
   const urlLower = url.toLowerCase();
   const titleLower = title.toLowerCase();
 
-  // Excluir documentos indesejados
-  if (urlLower.includes('portaria') || 
-      urlLower.includes('edital-de-notificacao') || 
+  // Incluir Portarias que mencionem Consultas Públicas ou Tomadas de Subsídios
+  if (urlLower.includes('portaria')) {
+    if (titleLower.includes('consulta pública') || titleLower.includes('tomada de subsídios')) {
+      return 'PORTARIA';
+    }
+    return 'OUTRO';
+  }
+
+  // Excluir outros documentos indesejados
+  if (urlLower.includes('edital-de-notificacao') || 
       urlLower.includes('aviso-de-registro-de-diplomas') || 
       urlLower.includes('pauta-da')) {
     return 'OUTRO';

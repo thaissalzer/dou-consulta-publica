@@ -49,3 +49,8 @@
 - [x] Remover opção "Ambas" do filtro "Tipo de Busca"
 - [x] Definir "Consultas Públicas" como opção padrão
 - [x] Atualizar backend para remover suporte a 'ambas'
+
+## Novo Requisito (16/04/2026 - Incluir Portarias Relacionadas)
+- [x] Backend: atualizar lógica para incluir Portarias que mencionem "CONSULTA PÚblica" ou "TOMADA DE SUBSÍDIOS"
+- [x] Backend: adicionar tipo de documento "PORTARIA" aos resultados quando relevante
+- [ ] Testar com URLs fornecidas
