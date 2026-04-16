@@ -23,6 +23,7 @@ interface DOUResult {
   editionNumber?: string;
   numberPage?: string;
   documentType?: string;
+  display_date_sortable?: string;
 }
 
 type DocumentType = 
@@ -35,15 +36,42 @@ type DocumentType =
   | 'PORTARIA'
   | 'OUTRO';
 
-function extractDocumentType(url: string, title: string, abstract: string = ''): DocumentType {
+
+async function extractArtigo1FromDocument(href: string): Promise<string> {
+  try {
+    const response = await fetch(href, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    if (!response.ok) return '';
+    
+    const html = await response.text();
+    const $ = cheerio.load(html);
+    
+    // Procurar por "Art. 1º" ou "Art. 1" no conteúdo
+    const text = $.text();
+    const art1Match = text.match(/Art\.\s*1º?[^A-Z]*?(?=Art\.\s*\d|$)/i);
+    
+    return art1Match ? art1Match[0] : '';
+  } catch (error) {
+    console.error('[DOU] Erro ao extrair Art. 1º:', error);
+    return '';
+  }
+}
+
+function extractDocumentType(url: string, title: string, abstract: string = '', artigo1: string = ''): DocumentType {
   const urlLower = url.toLowerCase();
   const titleLower = title.toLowerCase();
 
-  // Incluir Portarias que mencionem Consultas Públicas ou Tomadas de Subsídios (em título ou ementa)
+  // Incluir Portarias que mencionem Consultas Públicas ou Tomadas de Subsídios (em título, ementa ou Art. 1º)
   if (urlLower.includes('portaria')) {
     const abstractLower = abstract.toLowerCase();
+    const artigo1Lower = artigo1.toLowerCase();
     if (titleLower.includes('consulta pública') || titleLower.includes('tomada de subsídios') ||
-        abstractLower.includes('consulta pública') || abstractLower.includes('tomada de subsídios')) {
+        abstractLower.includes('consulta pública') || abstractLower.includes('tomada de subsídios') ||
+        artigo1Lower.includes('consulta pública') || artigo1Lower.includes('tomada de subsídios')) {
       return 'PORTARIA';
     }
     return 'OUTRO';
@@ -183,17 +211,27 @@ async function fetchDOUPage(
     return { results: [], totalPages: 0 };
   }
 
-  const results: DOUResult[] = searchResults
-    .map((content: any) => {
-      const urlTitle = content.urlTitle || "";
-      const title = (content.title || "").replace(/<[^>]*>/g, "");
-      const abstract = (content.content || "").replace(/<[^>]*>/g, "");
-      const documentType = extractDocumentType(urlTitle, title, abstract);
-      
-      return {
+  const results: DOUResult[] = [];
+  
+  for (const content of searchResults) {
+    const urlTitle = content.urlTitle || "";
+    const title = (content.title || "").replace(/<[^>]*>/g, "");
+    const abstract = (content.content || "").replace(/<[^>]*>/g, "");
+    const href = DOU_WEB_BASE_URL + urlTitle;
+    
+    let documentType = extractDocumentType(urlTitle, title, abstract);
+    
+    // Se for Portaria mas não encontrou os termos no título/ementa, verificar Art. 1º
+    if (documentType === 'OUTRO' && urlTitle.includes('portaria')) {
+      const art1 = await extractArtigo1FromDocument(href);
+      documentType = extractDocumentType(urlTitle, title, abstract, art1);
+    }
+    
+    if (isValidDocument(documentType as DocumentType)) {
+      results.push({
         section: (content.pubName || "").toLowerCase(),
         title,
-        href: DOU_WEB_BASE_URL + urlTitle,
+        href,
         abstract: (content.content || "").replace(/<[^>]*>/g, ""),
         date: content.pubDate || "",
         id: content.classPK || "",
@@ -203,9 +241,9 @@ async function fetchDOUPage(
         numberPage: content.numberPage || "",
         display_date_sortable: content.displayDateSortable || "",
         documentType,
-      };
-    })
-    .filter((result) => isValidDocument(result.documentType as DocumentType));
+      });
+    }
+  }
 
   return { results, totalPages };
 }

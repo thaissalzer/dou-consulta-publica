@@ -59,3 +59,9 @@
 - [x] Backend: atualizar extractDocumentType para procurar em título E ementa
 - [x] Backend: passar ementa (abstract) para a função de extração
 - [ ] Testar com Portaria nº 86 de 23/02/2026
+
+## Novo Requisito (16/04/2026 - Buscar em Art. 1º)
+- [x] Backend: extrair Art. 1º do conteúdo do documento
+- [x] Backend: procurar por "consulta pública" e "tomada de subsídios" no Art. 1º
+- [x] Implementação: requisição adicional apenas para Portarias sem os termos no título/ementa
+- [ ] Testar com Portaria MME nº 906 de 18/03/2026
