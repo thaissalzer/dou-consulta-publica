@@ -77,3 +77,11 @@
 - [x] Backend: fallback para regex em caso de erro do LLM
 - [x] Testes vitest para classificação (12 testes passando)
 - [ ] Testar com URLs fornecidas (incluir Portaria MME nº 900 e nº 901)
+
+## Novo Requisito (17/04/2026 - Sidebar com Filtros Dinâmicos)
+- [x] Frontend: criar componente Sidebar com filtros por órgão
+- [x] Frontend: exibir contadores de resultados por órgão
+- [x] Frontend: implementar filtro client-side (sem nova busca)
+- [x] Frontend: integrar sidebar na página Home
+- [x] Frontend: estilo responsivo (sidebar colapsável em mobile)
+- [x] Testes: validar filtragem rápida sem nova requisição ao DOU (15 testes passando)

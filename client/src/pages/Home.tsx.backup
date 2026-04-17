@@ -4,7 +4,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ResultsSidebar } from "@/components/ResultsSidebar";
 import {
   Search,
   Calendar,
@@ -73,7 +72,6 @@ export default function Home() {
   const [searchType, setSearchType] = useState<'consulta-publica' | 'tomada-subsidios'>('consulta-publica');
   const [selectedDocumentType, setSelectedDocumentType] = useState<string>("todos");
   const [searchTriggered, setSearchTriggered] = useState(false);
-  const [sidebarOrgaoFilter, setSidebarOrgaoFilter] = useState<string | null>(null);
 
   const dateStr = useMemo(
     () => dateMode === 'single' ? formatDateForAPI(selectedDate) : formatDateForAPI(selectedStartDate),
@@ -113,15 +111,8 @@ export default function Home() {
     { enabled: searchTriggered, retry: 1, staleTime: 5 * 60 * 1000 }
   );
 
-  // Filtrar resultados por órgão selecionado no sidebar
-  const filteredResults = useMemo(() => {
-    if (!results || !sidebarOrgaoFilter) return results;
-    return results.filter((r) => r.orgPrincipal === sidebarOrgaoFilter);
-  }, [results, sidebarOrgaoFilter]);
-
   const handleSearch = useCallback(() => {
     setSearchTriggered(true);
-    setSidebarOrgaoFilter(null);
   }, []);
 
   const handleDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,7 +127,6 @@ export default function Home() {
       return d;
     });
     setSearchTriggered(false);
-    setSidebarOrgaoFilter(null);
   }, []);
 
   const handleNextDay = useCallback(() => {
@@ -146,28 +136,23 @@ export default function Home() {
       return d;
     });
     setSearchTriggered(false);
-    setSidebarOrgaoFilter(null);
   }, []);
 
   const handleToday = useCallback(() => {
     setSelectedDate(new Date());
     setSearchTriggered(false);
-    setSidebarOrgaoFilter(null);
   }, []);
 
   const handleOrgaoChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedOrgao(e.target.value);
-    setSidebarOrgaoFilter(null);
   }, []);
 
   const handleSearchTypeChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setSearchType(e.target.value as 'consulta-publica' | 'tomada-subsidios');
-    setSidebarOrgaoFilter(null);
   }, []);
 
   const handleDocumentTypeChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedDocumentType(e.target.value);
-    setSidebarOrgaoFilter(null);
   }, []);
 
   return (
@@ -279,120 +264,140 @@ export default function Home() {
                 <div className="flex gap-2">
                   <Button
                     variant={dateMode === 'single' ? 'default' : 'outline'}
-                    size="sm"
+                    className="flex-1 h-9 text-sm"
                     onClick={() => setDateMode('single')}
-                    className="flex-1"
-                    style={{ fontFamily: "'Source Sans 3', sans-serif" }}
                   >
                     Data Única
                   </Button>
                   <Button
                     variant={dateMode === 'range' ? 'default' : 'outline'}
-                    size="sm"
+                    className="flex-1 h-9 text-sm"
                     onClick={() => setDateMode('range')}
-                    className="flex-1"
-                    style={{ fontFamily: "'Source Sans 3', sans-serif" }}
                   >
                     Intervalo
                   </Button>
                 </div>
               </div>
 
-              {/* Data selection */}
-              {dateMode === 'single' ? (
-                <div className="mb-4">
-                  <div className="flex gap-2 items-center">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={handlePrevDay}
-                      className="h-10 w-10"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <div className="flex-1">
-                      <Input
-                        type="date"
-                        value={formatInputDate(selectedDate)}
-                        onChange={handleDateChange}
-                        className="text-center"
-                      />
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={handleNextDay}
-                      className="h-10 w-10"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
+              {/* Data única */}
+              {dateMode === 'single' && (
+                <div className="flex items-center gap-2 mb-3">
                   <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleToday}
-                    className="w-full mt-2 text-xs"
-                    style={{ fontFamily: "'Source Sans 3', sans-serif" }}
+                    variant="outline"
+                    size="icon"
+                    className="h-10 w-10 shrink-0"
+                    onClick={handlePrevDay}
+                    title="Dia anterior"
                   >
-                    Hoje
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+
+                  <div className="relative flex-1">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      type="date"
+                      value={formatInputDate(selectedDate)}
+                      onChange={handleDateChange}
+                      className="pl-10 h-10 text-center font-medium"
+                      max={formatInputDate(new Date())}
+                    />
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-10 w-10 shrink-0"
+                    onClick={handleNextDay}
+                    title="Próximo dia"
+                  >
+                    <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
-              ) : (
-                <div className="mb-4 space-y-2">
-                  <div>
-                    <label className="block text-xs font-medium text-foreground mb-1" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
-                      Data Inicial
-                    </label>
-                    <Input
-                      type="date"
-                      value={formatInputDate(selectedStartDate)}
-                      onChange={(e) => setSelectedStartDate(parseInputDate(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-foreground mb-1" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
-                      Data Final
-                    </label>
-                    <Input
-                      type="date"
-                      value={formatInputDate(selectedEndDate)}
-                      onChange={(e) => setSelectedEndDate(parseInputDate(e.target.value))}
-                    />
+              )}
+
+              {/* Intervalo de datas */}
+              {dateMode === 'range' && (
+                <div className="space-y-2 mb-3">
+                  <div className="flex gap-2 items-center">
+                    <div className="relative flex-1">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                      <Input
+                        type="date"
+                        value={formatInputDate(selectedStartDate)}
+                        onChange={(e) => setSelectedStartDate(parseInputDate(e.target.value))}
+                        className="pl-10 h-10 text-center font-medium"
+                        max={formatInputDate(new Date())}
+                      />
+                    </div>
+                    <span className="text-muted-foreground font-medium">até</span>
+                    <div className="relative flex-1">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                      <Input
+                        type="date"
+                        value={formatInputDate(selectedEndDate)}
+                        onChange={(e) => setSelectedEndDate(parseInputDate(e.target.value))}
+                        className="pl-10 h-10 text-center font-medium"
+                        max={formatInputDate(new Date())}
+                      />
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Search button */}
-              <Button
-                onClick={handleSearch}
-                disabled={isLoading || isFetching}
-                className="w-full bg-gov-green hover:bg-gov-green-light text-white font-medium"
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleToday}
+                  className="text-xs"
+                  style={{ fontFamily: "'Source Sans 3', sans-serif" }}
+                >
+                  Hoje
+                </Button>
+                <Button
+                  onClick={handleSearch}
+                  className="flex-1 bg-gov-green hover:bg-gov-green-light text-white font-semibold"
+                  disabled={isLoading || isFetching}
+                  style={{ fontFamily: "'Source Sans 3', sans-serif" }}
+                >
+                  {isLoading || isFetching ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Buscando...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="h-4 w-4 mr-2" />
+                      Buscar no DOU
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <p
+                className="text-center text-xs text-muted-foreground mt-2 capitalize"
                 style={{ fontFamily: "'Source Sans 3', sans-serif" }}
               >
-                {isLoading || isFetching ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Buscando...
-                  </>
-                ) : (
-                  <>
-                    <Search className="mr-2 h-4 w-4" />
-                    Buscar no DOU
-                  </>
-                )}
-              </Button>
+                {formatDateDisplay(selectedDate)}
+              </p>
             </div>
           </div>
         </section>
 
         {/* Results section */}
-        <section className="bg-gray-50 py-8">
-          <div className="container">
-            {/* Loading state */}
-            {(isLoading || isFetching) && searchTriggered && (
-              <div className="space-y-4">
-                {[...Array(3)].map((_, i) => (
-                  <Card key={i} className="overflow-hidden">
+        <section className="container py-6">
+          {/* Loading state */}
+          {(isLoading || isFetching) && searchTriggered && (
+            <div className="max-w-3xl mx-auto">
+              <div className="flex items-center gap-2 mb-6">
+                <Loader2 className="h-4 w-4 animate-spin text-gov-green" />
+                <span className="text-sm text-muted-foreground" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
+                  Consultando o Diário Oficial da União...
+                </span>
+              </div>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="mb-4">
+                  <Card className="overflow-hidden">
                     <div className="flex">
                       <div className="w-1.5 bg-muted animate-pulse" />
                       <CardContent className="flex-1 p-5">
@@ -410,12 +415,14 @@ export default function Home() {
                       </CardContent>
                     </div>
                   </Card>
-                ))}
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
+          )}
 
-            {/* Error state */}
-            {error && searchTriggered && !isLoading && !isFetching && (
+          {/* Error state */}
+          {error && searchTriggered && !isLoading && !isFetching && (
+            <div className="max-w-3xl mx-auto">
               <Card className="border-destructive/30 bg-destructive/5">
                 <CardContent className="p-6 text-center">
                   <AlertCircle className="h-10 w-10 text-destructive mx-auto mb-3" />
@@ -438,10 +445,12 @@ export default function Home() {
                   </Button>
                 </CardContent>
               </Card>
-            )}
+            </div>
+          )}
 
-            {/* Empty state */}
-            {results && results.length === 0 && !isLoading && !isFetching && !sidebarOrgaoFilter && (
+          {/* Empty state */}
+          {results && results.length === 0 && !isLoading && !isFetching && (
+            <div className="max-w-3xl mx-auto">
               <Card className="border-dashed">
                 <CardContent className="p-8 text-center">
                   <FileText className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
@@ -457,181 +466,136 @@ export default function Home() {
                   </p>
                 </CardContent>
               </Card>
-            )}
+            </div>
+          )}
 
-            {/* Results with Sidebar */}
-            {results && results.length > 0 && !isLoading && !isFetching && (
-              <div className="flex gap-6">
-                {/* Sidebar */}
-                <div className="hidden lg:block w-64 shrink-0">
-                  <ResultsSidebar
-                    results={results}
-                    selectedOrgao={sidebarOrgaoFilter}
-                    onOrgaoSelect={setSidebarOrgaoFilter}
-                  />
-                </div>
-
-                {/* Results list */}
-                <div className="flex-1">
-                  {/* Mobile Sidebar */}
-                  <div className="lg:hidden mb-6">
-                    <ResultsSidebar
-                      results={results}
-                      selectedOrgao={sidebarOrgaoFilter}
-                      onOrgaoSelect={setSidebarOrgaoFilter}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between mb-5">
-                    <div>
-                      <h3
-                        className="text-lg font-bold text-foreground"
-                        style={{ fontFamily: "'Playfair Display', serif" }}
-                      >
-                        Resultados
-                      </h3>
-                      <p className="text-sm text-muted-foreground" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
-                        {sidebarOrgaoFilter ? (
-                          <>
-                            <strong>{filteredResults?.length || 0}</strong> de{" "}
-                            <strong>{results.length}</strong> resultado
-                            {results.length !== 1 ? "s" : ""} (filtrado por órgão)
-                          </>
-                        ) : (
-                          <>
-                            <strong>{results.length}</strong>{" "}
-                            {results.length === 1
-                              ? "consulta pública encontrada"
-                              : "consultas públicas encontradas"}{" "}
-                            em {formatDateForAPI(selectedDate)}
-                          </>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-
-                  <Separator className="mb-5" />
-
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={dateStr}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      {filteredResults?.map((item, index) => (
-                        <motion.div
-                          key={item.id || index}
-                          initial={{ opacity: 0, y: 12 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.25, delay: index * 0.04 }}
-                          className="mb-4"
-                        >
-                          <Card className="overflow-hidden group hover:shadow-md transition-shadow duration-200">
-                            <div className="flex">
-                              {/* Section color bar */}
-                              <div
-                                className={`w-1.5 shrink-0 ${getSectionColor(item.section)}`}
-                              />
-                              <CardContent className="flex-1 p-5">
-                                {/* Top metadata */}
-                                <div className="flex flex-wrap items-center gap-2 mb-2">
-                                  <span
-                                    className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded border ${getSectionBadgeVariant(item.section)}`}
-                                    style={{ fontFamily: "'Source Sans 3', sans-serif" }}
-                                  >
-                                    {item.sectionLabel}
-                                  </span>
-                                  {item.editionNumber && (
-                                    <span className="text-xs text-muted-foreground" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
-                                      Edição N.º {item.editionNumber}
-                                    </span>
-                                  )}
-                                  {item.numberPage && (
-                                    <span className="text-xs text-muted-foreground" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
-                                      &middot; Pág. {item.numberPage}
-                                    </span>
-                                  )}
-                                  <span className="text-xs text-muted-foreground" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
-                                    &middot; {item.date}
-                                  </span>
-                                </div>
-
-                                {/* Title */}
-                                <h4
-                                  className="text-base font-bold text-foreground mb-1 leading-snug"
-                                  style={{ fontFamily: "'Playfair Display', serif" }}
-                                >
-                                  {item.title}
-                                </h4>
-
-                                {/* Organization */}
-                                {(item.orgPrincipal || item.orgSubordinado) && (
-                                  <div className="flex items-start gap-1.5 mb-2">
-                                    <Building2 className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
-                                    <p className="text-xs text-muted-foreground leading-relaxed" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
-                                      {item.orgPrincipal}
-                                      {item.orgSubordinado && (
-                                        <span className="text-muted-foreground/60">
-                                          {" "}
-                                          &rsaquo; {item.orgSubordinado}
-                                        </span>
-                                      )}
-                                    </p>
-                                  </div>
-                                )}
-
-                                {/* Abstract */}
-                                {item.abstract && (
-                                  <p
-                                    className="text-sm text-foreground/80 leading-relaxed line-clamp-3 mb-3"
-                                    style={{ fontFamily: "'Source Sans 3', sans-serif" }}
-                                  >
-                                    {item.abstract}
-                                  </p>
-                                )}
-
-                                {/* Link */}
-                                <a
-                                  href={item.href}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 text-sm font-medium text-gov-green hover:text-gov-green-light transition-colors"
-                                  style={{ fontFamily: "'Source Sans 3', sans-serif" }}
-                                >
-                                  <ExternalLink className="h-3.5 w-3.5" />
-                                  Ver publicação completa no DOU
-                                </a>
-                              </CardContent>
-                            </div>
-                          </Card>
-                        </motion.div>
-                      ))}
-                    </motion.div>
-                  </AnimatePresence>
-
-                  {/* Empty state when filtered */}
-                  {sidebarOrgaoFilter && (!filteredResults || filteredResults.length === 0) && (
-                    <div className="text-center py-8">
-                      <FileText className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
-                      <h3
-                        className="text-lg font-semibold text-foreground mb-1"
-                        style={{ fontFamily: "'Playfair Display', serif" }}
-                      >
-                        Nenhum resultado para este órgão
-                      </h3>
-                      <p className="text-sm text-muted-foreground" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
-                        Tente selecionar outro órgão ou limpar o filtro.
-                      </p>
-                    </div>
-                  )}
+          {/* Results */}
+          {results && results.length > 0 && !isLoading && !isFetching && (
+            <div className="max-w-3xl mx-auto">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h3
+                    className="text-lg font-bold text-foreground"
+                    style={{ fontFamily: "'Playfair Display', serif" }}
+                  >
+                    Resultados
+                  </h3>
+                  <p className="text-sm text-muted-foreground" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
+                    <strong>{results.length}</strong>{" "}
+                    {results.length === 1
+                      ? "consulta pública encontrada"
+                      : "consultas públicas encontradas"}{" "}
+                    em {formatDateForAPI(selectedDate)}
+                  </p>
                 </div>
               </div>
-            )}
 
-            {/* Initial state */}
-            {!searchTriggered && !sidebarOrgaoFilter && (
+              <Separator className="mb-5" />
+
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={dateStr}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {results.map((item, index) => (
+                    <motion.div
+                      key={item.id || index}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25, delay: index * 0.04 }}
+                      className="mb-4"
+                    >
+                      <Card className="overflow-hidden group hover:shadow-md transition-shadow duration-200">
+                        <div className="flex">
+                          {/* Section color bar */}
+                          <div
+                            className={`w-1.5 shrink-0 ${getSectionColor(item.section)}`}
+                          />
+                          <CardContent className="flex-1 p-5">
+                            {/* Top metadata */}
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded border ${getSectionBadgeVariant(item.section)}`}
+                                style={{ fontFamily: "'Source Sans 3', sans-serif" }}
+                              >
+                                {item.sectionLabel}
+                              </span>
+                              {item.editionNumber && (
+                                <span className="text-xs text-muted-foreground" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
+                                  Edição N.º {item.editionNumber}
+                                </span>
+                              )}
+                              {item.numberPage && (
+                                <span className="text-xs text-muted-foreground" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
+                                  &middot; Pág. {item.numberPage}
+                                </span>
+                              )}
+                              <span className="text-xs text-muted-foreground" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
+                                &middot; {item.date}
+                              </span>
+                            </div>
+
+                            {/* Title */}
+                            <h4
+                              className="text-base font-bold text-foreground mb-1 leading-snug"
+                              style={{ fontFamily: "'Playfair Display', serif" }}
+                            >
+                              {item.title}
+                            </h4>
+
+                            {/* Organization */}
+                            {(item.orgPrincipal || item.orgSubordinado) && (
+                              <div className="flex items-start gap-1.5 mb-2">
+                                <Building2 className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                                <p className="text-xs text-muted-foreground leading-relaxed" style={{ fontFamily: "'Source Sans 3', sans-serif" }}>
+                                  {item.orgPrincipal}
+                                  {item.orgSubordinado && (
+                                    <span className="text-muted-foreground/60">
+                                      {" "}
+                                      &rsaquo; {item.orgSubordinado}
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Abstract */}
+                            {item.abstract && (
+                              <p
+                                className="text-sm text-foreground/80 leading-relaxed line-clamp-3 mb-3"
+                                style={{ fontFamily: "'Source Sans 3', sans-serif" }}
+                              >
+                                {item.abstract}
+                              </p>
+                            )}
+
+                            {/* Link */}
+                            <a
+                              href={item.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-sm font-medium text-gov-green hover:text-gov-green-light transition-colors"
+                              style={{ fontFamily: "'Source Sans 3', sans-serif" }}
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                              Ver publicação completa no DOU
+                            </a>
+                          </CardContent>
+                        </div>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          )}
+
+          {/* Initial state */}
+          {!searchTriggered && (
+            <div className="max-w-3xl mx-auto">
               <Card className="border-dashed border-gov-green/20 bg-gov-green/[0.02]">
                 <CardContent className="p-8 text-center">
                   <Search className="h-12 w-12 text-gov-green/30 mx-auto mb-4" />
@@ -646,8 +610,8 @@ export default function Home() {
                   </p>
                 </CardContent>
               </Card>
-            )}
-          </div>
+            </div>
+          )}
         </section>
       </main>
 
