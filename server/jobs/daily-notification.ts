@@ -17,8 +17,18 @@ export async function runDailyNotificationJob() {
       hoje.getMonth() + 1
     ).padStart(2, "0")}/${hoje.getFullYear()}`;
 
-    // Buscar ambos os tipos
-    const resultados = await searchDOU(dataStr, dataStr, "ambas");
+    // Buscar ambos os tipos separadamente
+    const resultadosCP = await searchDOU(dataStr, dataStr, "consulta-publica");
+    const resultadosTS = await searchDOU(dataStr, dataStr, "tomada-subsidios");
+    // Combinar e remover duplicatas por ID
+    const idsVistos = new Set<string>();
+    const resultados: any[] = [];
+    for (const r of [...resultadosCP, ...resultadosTS]) {
+      if (!idsVistos.has(r.id)) {
+        idsVistos.add(r.id);
+        resultados.push(r);
+      }
+    }
 
     // Filtrar apenas órgãos monitorados
     const filtrados = resultados.filter((r: any) =>

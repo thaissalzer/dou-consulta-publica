@@ -66,3 +66,14 @@
 - [x] Implementação: requisição adicional apenas para Portarias sem os termos no título/ementa
 - [x] Corrigir regex para capturar Art. 1º com quebras de linha
 - [ ] Testar com Portaria MME nº 900 de 27/02/2026
+
+## Novo Requisito (17/04/2026 - Classificação com LLM)
+- [x] Backend: refatorar busca para usar classificação LLM
+- [x] Backend: integrar LLM para classificar cada resultado como relevante ou não
+- [x] Backend: LLM analisa título + ementa + Art. 1º para determinar se é abertura/divulgação de CP ou TS
+- [x] Backend: remover lógica antiga de filtro baseada em regex/URL
+- [x] Backend: buscar Art. 1º para Portarias antes de classificar
+- [x] Backend: classificação em lotes de 20 itens
+- [x] Backend: fallback para regex em caso de erro do LLM
+- [x] Testes vitest para classificação (12 testes passando)
+- [ ] Testar com URLs fornecidas (incluir Portaria MME nº 900 e nº 901)

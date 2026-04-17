@@ -4,6 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as cheerio from "cheerio";
+import { invokeLLM } from "./_core/llm";
 
 const DOU_API_BASE_URL = "https://www.in.gov.br/consulta/-/buscar/dou";
 const DOU_WEB_BASE_URL = "https://www.in.gov.br/web/dou/-/";
@@ -24,124 +25,184 @@ interface DOUResult {
   numberPage?: string;
   documentType?: string;
   display_date_sortable?: string;
+  relevancia?: string;
 }
 
-type DocumentType = 
-  | 'CONSULTA PÚBLICA'
-  | 'AVISO DE CONSULTA PÚBLICA'
-  | 'TOMADA DE SUBSÍDIOS'
-  | 'AVISO DE TOMADA DE SUBSÍDIOS'
-  | 'AVISO DE PRORROGAÇÃO'
-  | 'AVISO DE REABERTURA'
-  | 'PORTARIA'
-  | 'OUTRO';
+// ============================================================
+// Classificação com LLM
+// ============================================================
 
+interface LLMClassification {
+  relevante: boolean;
+  tipo: string;
+  motivo: string;
+}
+
+async function classifyWithLLM(
+  items: { title: string; abstract: string; artigo1?: string }[]
+): Promise<LLMClassification[]> {
+  if (items.length === 0) return [];
+
+  const itemsText = items
+    .map((item, i) => {
+      let text = `[${i}] Título: ${item.title}\nEmenta: ${item.abstract}`;
+      if (item.artigo1) {
+        text += `\nArt. 1º: ${item.artigo1}`;
+      }
+      return text;
+    })
+    .join("\n\n---\n\n");
+
+  const systemPrompt = `Você é um classificador de documentos do Diário Oficial da União (DOU) do Brasil.
+
+Sua tarefa é analisar documentos e determinar se cada um é uma **abertura, divulgação, prorrogação ou reabertura de Consulta Pública ou Tomada de Subsídios**.
+
+DOCUMENTOS RELEVANTES (marcar como relevante=true):
+- Abertura de Consulta Pública
+- Aviso de Consulta Pública
+- Consulta Pública (quando é a própria abertura/divulgação)
+- Abertura de Tomada de Subsídios
+- Aviso de Tomada de Subsídios
+- Tomada de Subsídios (quando é a própria abertura/divulgação)
+- Portarias que abrem/divulgam Consultas Públicas ou Tomadas de Subsídios (ex: "Fica divulgada, para Consulta Pública...")
+- Avisos de prorrogação de Consultas Públicas ou Tomadas de Subsídios
+- Avisos de reabertura de Consultas Públicas ou Tomadas de Subsídios
+
+DOCUMENTOS NÃO RELEVANTES (marcar como relevante=false):
+- Documentos que apenas MENCIONAM consultas públicas passadas ou futuras sem ser a abertura
+- Editais de notificação
+- Avisos de registro de diplomas
+- Pautas de reunião
+- Portarias que apenas regulamentam algo e mencionam consulta pública de passagem
+- Avisos genéricos que não são de consulta pública
+- Qualquer documento que não seja especificamente uma abertura/divulgação/prorrogação/reabertura de CP ou TS
+
+Para o campo "tipo", use uma destas categorias:
+- CONSULTA PÚBLICA
+- AVISO DE CONSULTA PÚBLICA
+- TOMADA DE SUBSÍDIOS
+- AVISO DE TOMADA DE SUBSÍDIOS
+- PORTARIA (quando é uma portaria que abre/divulga CP ou TS)
+- AVISO DE PRORROGAÇÃO
+- AVISO DE REABERTURA
+- OUTRO (para documentos não relevantes)
+
+Responda APENAS com o JSON, sem texto adicional.`;
+
+  const userPrompt = `Classifique cada documento abaixo. Responda com um array JSON com objetos contendo: "index" (número do item), "relevante" (boolean), "tipo" (string), "motivo" (explicação breve).
+
+${itemsText}`;
+
+  try {
+    const response = await invokeLLM({
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "classificacao_documentos",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              classificacoes: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    index: { type: "integer", description: "Índice do item" },
+                    relevante: { type: "boolean", description: "Se o documento é relevante" },
+                    tipo: { type: "string", description: "Tipo do documento" },
+                    motivo: { type: "string", description: "Motivo da classificação" },
+                  },
+                  required: ["index", "relevante", "tipo", "motivo"],
+                  additionalProperties: false,
+                },
+              },
+            },
+            required: ["classificacoes"],
+            additionalProperties: false,
+          },
+        },
+      },
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content || typeof content !== "string") return items.map(() => ({ relevante: false, tipo: "OUTRO", motivo: "Erro na classificação" }));
+
+    const parsed = JSON.parse(content);
+    const classificacoes = parsed.classificacoes || [];
+
+    // Mapear por index
+    const resultMap = new Map<number, LLMClassification>();
+    for (const c of classificacoes) {
+      resultMap.set(c.index, { relevante: c.relevante, tipo: c.tipo, motivo: c.motivo });
+    }
+
+    return items.map((_, i) =>
+      resultMap.get(i) || { relevante: false, tipo: "OUTRO", motivo: "Não classificado" }
+    );
+  } catch (error) {
+    console.error("[LLM] Erro na classificação:", error);
+    // Fallback: usar lógica antiga baseada em regex
+    return items.map((item) => {
+      const combined = `${item.title} ${item.abstract} ${item.artigo1 || ""}`.toLowerCase();
+      if (combined.includes("consulta pública") || combined.includes("tomada de subsídios")) {
+        return { relevante: true, tipo: "OUTRO", motivo: "Fallback regex" };
+      }
+      return { relevante: false, tipo: "OUTRO", motivo: "Fallback regex - não encontrado" };
+    });
+  }
+}
+
+// ============================================================
+// Extração do Art. 1º
+// ============================================================
 
 async function extractArtigo1FromDocument(href: string): Promise<string> {
   try {
     const response = await fetch(href, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
     });
-    
-    if (!response.ok) return '';
-    
+
+    if (!response.ok) return "";
+
     const html = await response.text();
     const $ = cheerio.load(html);
-    
-    // Procurar por "Art. 1º" ou "Art. 1" no conteúdo
+
     const text = $.text();
-    // Usar regex que captura quebras de linha e espaços, até o próximo artigo ou fim
-    const art1Match = text.match(/Art\.\s*1º?[\s\S]*?(?=Art\.\s*\d|$)/i);
-    
+    const art1Match = text.match(/Art\.\s*1º?[\s\S]*?(?=Art\.\s*[2-9]|$)/i);
+
     if (art1Match) {
-      // Limitar a 1000 caracteres para evitar capturar todo o documento
       return art1Match[0].substring(0, 1000);
     }
-    
-    return '';
+
+    return "";
   } catch (error) {
-    console.error('[DOU] Erro ao extrair Art. 1º:', error);
-    return '';
+    console.error("[DOU] Erro ao extrair Art. 1º:", error);
+    return "";
   }
 }
 
-function extractDocumentType(url: string, title: string, abstract: string = '', artigo1: string = ''): DocumentType {
-  const urlLower = url.toLowerCase();
-  const titleLower = title.toLowerCase();
-
-  // Incluir Portarias que mencionem Consultas Públicas ou Tomadas de Subsídios (em título, ementa ou Art. 1º)
-  if (urlLower.includes('portaria')) {
-    const abstractLower = abstract.toLowerCase();
-    const artigo1Lower = artigo1.toLowerCase();
-    if (titleLower.includes('consulta pública') || titleLower.includes('tomada de subsídios') ||
-        abstractLower.includes('consulta pública') || abstractLower.includes('tomada de subsídios') ||
-        artigo1Lower.includes('consulta pública') || artigo1Lower.includes('tomada de subsídios')) {
-      return 'PORTARIA';
-    }
-    return 'OUTRO';
-  }
-
-  // Excluir outros documentos indesejados
-  if (urlLower.includes('edital-de-notificacao') || 
-      urlLower.includes('aviso-de-registro-de-diplomas') || 
-      urlLower.includes('pauta-da')) {
-    return 'OUTRO';
-  }
-
-  // Identificar tipo de documento
-  if (urlLower.includes('consulta-publica')) {
-    if (urlLower.includes('aviso-de')) {
-      return 'AVISO DE CONSULTA PÚBLICA';
-    }
-    return 'CONSULTA PÚBLICA';
-  }
-
-  if (urlLower.includes('tomada-de-subsidios')) {
-    if (urlLower.includes('aviso-de')) {
-      return 'AVISO DE TOMADA DE SUBSÍDIOS';
-    }
-    return 'TOMADA DE SUBSÍDIOS';
-  }
-
-  if (urlLower.includes('aviso-de-prorrogacao')) {
-    if (titleLower.includes('consulta pública') || titleLower.includes('subsídios')) {
-      return 'AVISO DE PRORROGAÇÃO';
-    }
-  }
-
-  if (urlLower.includes('aviso-de-reabertura') && titleLower.includes('consulta pública')) {
-    return 'AVISO DE REABERTURA';
-  }
-
-  if (urlLower.includes('aviso-de-consulta-publica')) {
-    return 'AVISO DE CONSULTA PÚBLICA';
-  }
-
-  if (urlLower.includes('aviso-de-tomada-de-subsidios')) {
-    return 'AVISO DE TOMADA DE SUBSÍDIOS';
-  }
-
-  return 'OUTRO';
-}
-
-function isValidDocument(documentType: DocumentType): boolean {
-  return documentType !== 'OUTRO';
-}
+// ============================================================
+// Busca no DOU
+// ============================================================
 
 async function fetchDOUPage(
   publishFrom: string,
   publishTo: string,
   pageNum: number,
-  searchType: 'consulta-publica' | 'tomada-subsidios' | 'ambas' = 'consulta-publica',
+  searchType: "consulta-publica" | "tomada-subsidios" = "consulta-publica",
   lastItem?: { id: string; displayDate: string }
-): Promise<{ results: DOUResult[]; totalPages: number }> {
+): Promise<{ results: any[]; totalPages: number }> {
   let searchQuery = '"CONSULTA PÚBLICA"';
-  if (searchType === 'tomada-subsidios') {
+  if (searchType === "tomada-subsidios") {
     searchQuery = '"TOMADA DE SUBSÍDIOS"';
-  } else if (searchType === 'ambas') {
-    searchQuery = '("CONSULTA PÚBLICA" OR "TOMADA DE SUBSÍDIOS")';
   }
 
   const params: Record<string, string> = {
@@ -172,7 +233,6 @@ async function fetchDOUPage(
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
     response = await fetch(url.toString(), { headers });
   } catch {
-    // Fallback to HTTP
     const httpUrl = DOU_API_BASE_URL.replace("https://", "http://");
     const url = new URL(httpUrl);
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
@@ -186,7 +246,6 @@ async function fetchDOUPage(
   const html = await response.text();
   const $ = cheerio.load(html);
 
-  // Get total pages
   let totalPages = 1;
   const lastPageBtn = $("button#lastPage");
   if (lastPageBtn.length) {
@@ -200,9 +259,8 @@ async function fetchDOUPage(
     totalPages = 2;
   }
 
-  // Extract JSON from script tag
   const scriptTag = $(
-    'script#_br_com_seatecnologia_in_buscadou_BuscaDouPortlet_params'
+    "script#_br_com_seatecnologia_in_buscadou_BuscaDouPortlet_params"
   );
 
   if (!scriptTag.length) {
@@ -217,49 +275,15 @@ async function fetchDOUPage(
     return { results: [], totalPages: 0 };
   }
 
-  const results: DOUResult[] = [];
-  
-  for (const content of searchResults) {
-    const urlTitle = content.urlTitle || "";
-    const title = (content.title || "").replace(/<[^>]*>/g, "");
-    const abstract = (content.content || "").replace(/<[^>]*>/g, "");
-    const href = DOU_WEB_BASE_URL + urlTitle;
-    
-    let documentType = extractDocumentType(urlTitle, title, abstract);
-    
-    // Se for Portaria mas não encontrou os termos no título/ementa, verificar Art. 1º
-    if (documentType === 'OUTRO' && urlTitle.includes('portaria')) {
-      const art1 = await extractArtigo1FromDocument(href);
-      documentType = extractDocumentType(urlTitle, title, abstract, art1);
-    }
-    
-    if (isValidDocument(documentType as DocumentType)) {
-      results.push({
-        section: (content.pubName || "").toLowerCase(),
-        title,
-        href,
-        abstract: (content.content || "").replace(/<[^>]*>/g, ""),
-        date: content.pubDate || "",
-        id: content.classPK || "",
-        orgPrincipal: content.hierarchyList?.[0] || "",
-        orgSubordinado: content.hierarchyList?.slice(1).join(" > ") || "",
-        editionNumber: content.editionNumber || "",
-        numberPage: content.numberPage || "",
-        display_date_sortable: content.displayDateSortable || "",
-        documentType,
-      });
-    }
-  }
-
-  return { results, totalPages };
+  return { results: searchResults, totalPages };
 }
 
-export async function searchDOU(
+async function fetchAllDOUPages(
   publishFrom: string,
   publishTo: string,
-  searchType: 'consulta-publica' | 'tomada-subsidios' | 'ambas' = 'consulta-publica'
-): Promise<DOUResult[]> {
-  const allResults: DOUResult[] = [];
+  searchType: "consulta-publica" | "tomada-subsidios" = "consulta-publica"
+): Promise<any[]> {
+  const allResults: any[] = [];
 
   const firstPage = await fetchDOUPage(publishFrom, publishTo, 0, searchType);
   allResults.push(...firstPage.results);
@@ -270,15 +294,118 @@ export async function searchDOU(
     const lastItem = allResults[allResults.length - 1];
     if (!lastItem) break;
 
-    const page = await fetchDOUPage(publishFrom, publishTo, pageNum, searchType, {
-      id: lastItem.id,
-      displayDate: (lastItem as any).display_date_sortable || "",
-    });
+    const page = await fetchDOUPage(
+      publishFrom,
+      publishTo,
+      pageNum,
+      searchType,
+      {
+        id: lastItem.classPK || "",
+        displayDate: lastItem.displayDateSortable || "",
+      }
+    );
     allResults.push(...page.results);
   }
 
   return allResults;
 }
+
+// ============================================================
+// Pipeline principal: busca + classificação LLM
+// ============================================================
+
+export async function searchDOU(
+  publishFrom: string,
+  publishTo: string,
+  searchType: "consulta-publica" | "tomada-subsidios" = "consulta-publica"
+): Promise<DOUResult[]> {
+  // 1. Buscar todos os resultados brutos do DOU
+  const rawResults = await fetchAllDOUPages(publishFrom, publishTo, searchType);
+
+  if (rawResults.length === 0) return [];
+
+  // 2. Preparar dados para classificação
+  const itemsForClassification: {
+    title: string;
+    abstract: string;
+    artigo1?: string;
+    raw: any;
+  }[] = [];
+
+  for (const content of rawResults) {
+    const urlTitle = content.urlTitle || "";
+    const title = (content.title || "").replace(/<[^>]*>/g, "");
+    const abstract = (content.content || "").replace(/<[^>]*>/g, "");
+
+    itemsForClassification.push({
+      title,
+      abstract,
+      raw: content,
+    });
+  }
+
+  // 3. Para Portarias, buscar Art. 1º antes de classificar
+  const portariaPromises = itemsForClassification.map(async (item) => {
+    const urlTitle = item.raw.urlTitle || "";
+    if (urlTitle.toLowerCase().includes("portaria")) {
+      const href = DOU_WEB_BASE_URL + urlTitle;
+      const art1 = await extractArtigo1FromDocument(href);
+      item.artigo1 = art1;
+    }
+  });
+
+  await Promise.all(portariaPromises);
+
+  // 4. Classificar com LLM em lotes de até 20 itens
+  const BATCH_SIZE = 20;
+  const allClassifications: LLMClassification[] = [];
+
+  for (let i = 0; i < itemsForClassification.length; i += BATCH_SIZE) {
+    const batch = itemsForClassification.slice(i, i + BATCH_SIZE);
+    const classifications = await classifyWithLLM(
+      batch.map((b) => ({
+        title: b.title,
+        abstract: b.abstract,
+        artigo1: b.artigo1,
+      }))
+    );
+    allClassifications.push(...classifications);
+  }
+
+  // 5. Filtrar apenas os relevantes e montar resultado final
+  const results: DOUResult[] = [];
+
+  for (let i = 0; i < itemsForClassification.length; i++) {
+    const classification = allClassifications[i];
+    if (!classification || !classification.relevante) continue;
+
+    const item = itemsForClassification[i];
+    const content = item.raw;
+    const urlTitle = content.urlTitle || "";
+
+    results.push({
+      section: (content.pubName || "").toLowerCase(),
+      title: item.title,
+      href: DOU_WEB_BASE_URL + urlTitle,
+      abstract: (content.content || "").replace(/<[^>]*>/g, ""),
+      date: content.pubDate || "",
+      id: content.classPK || "",
+      orgPrincipal: content.hierarchyList?.[0] || "",
+      orgSubordinado: content.hierarchyList?.slice(1).join(" > ") || "",
+      editionNumber: content.editionNumber || "",
+      numberPage: content.numberPage || "",
+      display_date_sortable: content.displayDateSortable || "",
+      documentType: classification.tipo,
+      relevancia: classification.motivo,
+    });
+  }
+
+  return results;
+}
+
+// ============================================================
+// Mapa de seções
+// ============================================================
 
 const SECTION_MAP: Record<string, string> = {
   do1: "Seção 1",
@@ -293,6 +420,10 @@ const SECTION_MAP: Record<string, string> = {
   doe: "Edição Extra",
   dos: "Edição Suplementar",
 };
+
+// ============================================================
+// Rotas tRPC
+// ============================================================
 
 export const appRouter = router({
   system: systemRouter,
@@ -309,11 +440,18 @@ export const appRouter = router({
     searchConsultasPublicas: publicProcedure
       .input(
         z.object({
-          date: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA"),
-          dateEnd: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA").optional(),
+          date: z
+            .string()
+            .regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA"),
+          dateEnd: z
+            .string()
+            .regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA")
+            .optional(),
           orgao: z.string().optional(),
           documentType: z.string().optional(),
-          searchType: z.enum(['consulta-publica', 'tomada-subsidios']).default('consulta-publica'),
+          searchType: z
+            .enum(["consulta-publica", "tomada-subsidios"])
+            .default("consulta-publica"),
         })
       )
       .query(async ({ input }) => {
@@ -325,10 +463,10 @@ export const appRouter = router({
           sectionLabel: SECTION_MAP[r.section] || r.section,
         }));
 
-        // Filtrar por órgão se selecionado
-        // Filtrar por tipo de documento se selecionado
         if (input.documentType && input.documentType !== "todos") {
-          filtered = filtered.filter((r) => r.documentType === input.documentType);
+          filtered = filtered.filter(
+            (r) => r.documentType === input.documentType
+          );
         }
         if (input.orgao && input.orgao !== "todos") {
           filtered = filtered.filter((r) => r.orgPrincipal === input.orgao);
@@ -340,17 +478,22 @@ export const appRouter = router({
     getOrgaos: publicProcedure
       .input(
         z.object({
-          date: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA"),
-          dateEnd: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA").optional(),
-          documentType: z.string().optional(),
-          searchType: z.enum(['consulta-publica', 'tomada-subsidios']).default('consulta-publica'),
+          date: z
+            .string()
+            .regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA"),
+          dateEnd: z
+            .string()
+            .regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA")
+            .optional(),
+          searchType: z
+            .enum(["consulta-publica", "tomada-subsidios"])
+            .default("consulta-publica"),
         })
       )
       .query(async ({ input }) => {
         const endDate = input.dateEnd || input.date;
         const results = await searchDOU(input.date, endDate, input.searchType);
 
-        // Extrair órgãos únicos
         const orgaosSet = new Set<string>();
         results.forEach((r) => {
           if (r.orgPrincipal) {
@@ -364,10 +507,16 @@ export const appRouter = router({
     getDocumentTypes: publicProcedure
       .input(
         z.object({
-          date: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA"),
-          dateEnd: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA").optional(),
-          documentType: z.string().optional(),
-          searchType: z.enum(['consulta-publica', 'tomada-subsidios']).default('consulta-publica'),
+          date: z
+            .string()
+            .regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA"),
+          dateEnd: z
+            .string()
+            .regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA")
+            .optional(),
+          searchType: z
+            .enum(["consulta-publica", "tomada-subsidios"])
+            .default("consulta-publica"),
         })
       )
       .query(async ({ input }) => {
