@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ResultsSidebar } from "@/components/ResultsSidebar";
+import { ResultsFilters } from "@/components/ResultsFilters";
 import {
   Search,
   Calendar,
@@ -74,6 +75,8 @@ export default function Home() {
   const [selectedDocumentType, setSelectedDocumentType] = useState<string>("todos");
   const [searchTriggered, setSearchTriggered] = useState(false);
   const [sidebarOrgaoFilter, setSidebarOrgaoFilter] = useState<string | null>(null);
+  const [selectedDocumentTypes, setSelectedDocumentTypes] = useState<Set<string>>(new Set());
+  const [selectedSections, setSelectedSections] = useState<Set<string>>(new Set());
 
   const dateStr = useMemo(
     () => dateMode === 'single' ? formatDateForAPI(selectedDate) : formatDateForAPI(selectedStartDate),
@@ -113,15 +116,59 @@ export default function Home() {
     { enabled: searchTriggered, retry: 1, staleTime: 5 * 60 * 1000 }
   );
 
-  // Filtrar resultados por órgão selecionado no sidebar
+  // Filtrar resultados por órgão, tipo de documento e seção
   const filteredResults = useMemo(() => {
-    if (!results || !sidebarOrgaoFilter) return results;
-    return results.filter((r) => r.orgPrincipal === sidebarOrgaoFilter);
-  }, [results, sidebarOrgaoFilter]);
+    if (!results) return results;
+    
+    return results.filter((r) => {
+      // Filtro de órgão
+      if (sidebarOrgaoFilter && r.orgPrincipal !== sidebarOrgaoFilter) return false;
+      
+      // Filtro de tipo de documento
+      if (selectedDocumentTypes.size > 0 && r.documentType && !selectedDocumentTypes.has(r.documentType)) return false;
+      
+      // Filtro de seção
+      if (selectedSections.size > 0 && !selectedSections.has(r.section)) return false;
+      
+      return true;
+    });
+  }, [results, sidebarOrgaoFilter, selectedDocumentTypes, selectedSections]);
+
+  const handleDocumentTypeToggle = useCallback((type: string) => {
+    setSelectedDocumentTypes((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(type)) {
+        newSet.delete(type);
+      } else {
+        newSet.add(type);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const handleSectionToggle = useCallback((section: string) => {
+    setSelectedSections((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(section)) {
+        newSet.delete(section);
+      } else {
+        newSet.add(section);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const handleClearAllFilters = useCallback(() => {
+    setSidebarOrgaoFilter(null);
+    setSelectedDocumentTypes(new Set());
+    setSelectedSections(new Set());
+  }, []);
 
   const handleSearch = useCallback(() => {
     setSearchTriggered(true);
     setSidebarOrgaoFilter(null);
+    setSelectedDocumentTypes(new Set());
+    setSelectedSections(new Set());
   }, []);
 
   const handleDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -137,6 +184,8 @@ export default function Home() {
     });
     setSearchTriggered(false);
     setSidebarOrgaoFilter(null);
+    setSelectedDocumentTypes(new Set());
+    setSelectedSections(new Set());
   }, []);
 
   const handleNextDay = useCallback(() => {
@@ -147,27 +196,37 @@ export default function Home() {
     });
     setSearchTriggered(false);
     setSidebarOrgaoFilter(null);
+    setSelectedDocumentTypes(new Set());
+    setSelectedSections(new Set());
   }, []);
 
   const handleToday = useCallback(() => {
     setSelectedDate(new Date());
     setSearchTriggered(false);
     setSidebarOrgaoFilter(null);
+    setSelectedDocumentTypes(new Set());
+    setSelectedSections(new Set());
   }, []);
 
   const handleOrgaoChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedOrgao(e.target.value);
     setSidebarOrgaoFilter(null);
+    setSelectedDocumentTypes(new Set());
+    setSelectedSections(new Set());
   }, []);
 
   const handleSearchTypeChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setSearchType(e.target.value as 'consulta-publica' | 'tomada-subsidios');
     setSidebarOrgaoFilter(null);
+    setSelectedDocumentTypes(new Set());
+    setSelectedSections(new Set());
   }, []);
 
   const handleDocumentTypeChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedDocumentType(e.target.value);
     setSidebarOrgaoFilter(null);
+    setSelectedDocumentTypes(new Set());
+    setSelectedSections(new Set());
   }, []);
 
   return (
@@ -462,23 +521,41 @@ export default function Home() {
             {/* Results with Sidebar */}
             {results && results.length > 0 && !isLoading && !isFetching && (
               <div className="flex gap-6">
-                {/* Sidebar */}
-                <div className="hidden lg:block w-64 shrink-0">
+                {/* Sidebar + Filters */}
+                <div className="hidden lg:block w-64 shrink-0 space-y-6">
                   <ResultsSidebar
                     results={results}
                     selectedOrgao={sidebarOrgaoFilter}
                     onOrgaoSelect={setSidebarOrgaoFilter}
                   />
+                  <Separator />
+                  <ResultsFilters
+                    results={results}
+                    selectedDocumentTypes={selectedDocumentTypes}
+                    selectedSections={selectedSections}
+                    onDocumentTypeToggle={handleDocumentTypeToggle}
+                    onSectionToggle={handleSectionToggle}
+                    onClearAll={handleClearAllFilters}
+                  />
                 </div>
 
                 {/* Results list */}
                 <div className="flex-1">
-                  {/* Mobile Sidebar */}
-                  <div className="lg:hidden mb-6">
+                  {/* Mobile Sidebar + Filters */}
+                  <div className="lg:hidden mb-6 space-y-4">
                     <ResultsSidebar
                       results={results}
                       selectedOrgao={sidebarOrgaoFilter}
                       onOrgaoSelect={setSidebarOrgaoFilter}
+                    />
+                    <Separator />
+                    <ResultsFilters
+                      results={results}
+                      selectedDocumentTypes={selectedDocumentTypes}
+                      selectedSections={selectedSections}
+                      onDocumentTypeToggle={handleDocumentTypeToggle}
+                      onSectionToggle={handleSectionToggle}
+                      onClearAll={handleClearAllFilters}
                     />
                   </div>
 

@@ -85,3 +85,11 @@
 - [x] Frontend: integrar sidebar na página Home
 - [x] Frontend: estilo responsivo (sidebar colapsável em mobile)
 - [x] Testes: validar filtragem rápida sem nova requisição ao DOU (15 testes passando)
+
+## Novo Requisito (17/04/2026 - Filtros Client-Side Adicionais)
+- [x] Frontend: criar componente ResultsFilters com filtros por tipo de documento e seção
+- [x] Frontend: exibir contadores para cada filtro
+- [x] Frontend: implementar lógica de combinação de filtros (órgão + tipo + seção)
+- [x] Frontend: integrar ResultsFilters na página Home
+- [x] Frontend: permitir limpar filtros individuais ou todos
+- [x] Testes: validar combinação de múltiplos filtros client-side (18 testes passando)
