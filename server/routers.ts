@@ -450,13 +450,31 @@ export const appRouter = router({
           orgao: z.string().optional(),
           documentType: z.string().optional(),
           searchType: z
-            .enum(["consulta-publica", "tomada-subsidios"])
-            .default("consulta-publica"),
+            .enum(["consulta-publica", "tomada-subsidios", "ambas"])
+            .default("ambas"),
         })
       )
       .query(async ({ input }) => {
         const endDate = input.dateEnd || input.date;
-        const results = await searchDOU(input.date, endDate, input.searchType);
+        
+        let results;
+        if (input.searchType === "ambas") {
+          // Buscar ambos os tipos e combinar
+          const consultasPublicas = await searchDOU(input.date, endDate, "consulta-publica");
+          const tomadasSubsidios = await searchDOU(input.date, endDate, "tomada-subsidios");
+          
+          // Combinar e remover duplicatas por ID
+          const idsVistos = new Set<string>();
+          results = [];
+          for (const r of [...consultasPublicas, ...tomadasSubsidios]) {
+            if (!idsVistos.has(r.id)) {
+              idsVistos.add(r.id);
+              results.push(r);
+            }
+          }
+        } else {
+          results = await searchDOU(input.date, endDate, input.searchType as "consulta-publica" | "tomada-subsidios");
+        }
 
         let filtered = results.map((r) => ({
           ...r,
@@ -486,13 +504,31 @@ export const appRouter = router({
             .regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA")
             .optional(),
           searchType: z
-            .enum(["consulta-publica", "tomada-subsidios"])
-            .default("consulta-publica"),
+            .enum(["consulta-publica", "tomada-subsidios", "ambas"])
+            .default("ambas"),
         })
       )
       .query(async ({ input }) => {
         const endDate = input.dateEnd || input.date;
-        const results = await searchDOU(input.date, endDate, input.searchType);
+        
+        let results;
+        if (input.searchType === "ambas") {
+          // Buscar ambos os tipos e combinar
+          const consultasPublicas = await searchDOU(input.date, endDate, "consulta-publica");
+          const tomadasSubsidios = await searchDOU(input.date, endDate, "tomada-subsidios");
+          
+          // Combinar e remover duplicatas por ID
+          const idsVistos = new Set<string>();
+          results = [];
+          for (const r of [...consultasPublicas, ...tomadasSubsidios]) {
+            if (!idsVistos.has(r.id)) {
+              idsVistos.add(r.id);
+              results.push(r);
+            }
+          }
+        } else {
+          results = await searchDOU(input.date, endDate, input.searchType as "consulta-publica" | "tomada-subsidios");
+        }
 
         const orgaosSet = new Set<string>();
         results.forEach((r) => {
@@ -515,13 +551,31 @@ export const appRouter = router({
             .regex(/^\d{2}\/\d{2}\/\d{4}$/, "Formato: DD/MM/AAAA")
             .optional(),
           searchType: z
-            .enum(["consulta-publica", "tomada-subsidios"])
-            .default("consulta-publica"),
+            .enum(["consulta-publica", "tomada-subsidios", "ambas"])
+            .default("ambas"),
         })
       )
       .query(async ({ input }) => {
         const endDate = input.dateEnd || input.date;
-        const results = await searchDOU(input.date, endDate, input.searchType);
+        
+        let results;
+        if (input.searchType === "ambas") {
+          // Buscar ambos os tipos e combinar
+          const consultasPublicas = await searchDOU(input.date, endDate, "consulta-publica");
+          const tomadasSubsidios = await searchDOU(input.date, endDate, "tomada-subsidios");
+          
+          // Combinar e remover duplicatas por ID
+          const idsVistos = new Set<string>();
+          results = [];
+          for (const r of [...consultasPublicas, ...tomadasSubsidios]) {
+            if (!idsVistos.has(r.id)) {
+              idsVistos.add(r.id);
+              results.push(r);
+            }
+          }
+        } else {
+          results = await searchDOU(input.date, endDate, input.searchType as "consulta-publica" | "tomada-subsidios");
+        }
 
         const typesSet = new Set<string>();
         results.forEach((r) => {

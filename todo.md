@@ -93,3 +93,10 @@
 - [x] Frontend: integrar ResultsFilters na página Home
 - [x] Frontend: permitir limpar filtros individuais ou todos
 - [x] Testes: validar combinação de múltiplos filtros client-side (18 testes passando)
+
+
+## Novo Requisito (30/04/2026 - Tipo de Busca Combinada)
+- [x] Frontend: adicionar opção "Consultas Públicas e Tomada de Subsídios" no dropdown
+- [x] Backend: implementar busca combinada que retorna ambos os tipos
+- [x] Frontend: definir opção combinada como padrão ao abrir a página
+- [ ] Testes: validar busca combinada
