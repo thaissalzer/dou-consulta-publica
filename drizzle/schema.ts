@@ -38,15 +38,3 @@ export const douPublicacoes = mysqlTable("dou_publicacoes", {
 
 export type DOUPublicacao = typeof douPublicacoes.$inferSelect;
 export type InsertDOUPublicacao = typeof douPublicacoes.$inferInsert;
-
-export const searchCache = mysqlTable("search_cache", {
-  id: int("id").autoincrement().primaryKey(),
-  date: varchar("date", { length: 10 }).notNull().unique(), // YYYY-MM-DD
-  searchType: varchar("searchType", { length: 50 }).notNull(), // 'ambas', 'consultas', 'subsidios'
-  results: text("results").notNull(), // JSON stringified results
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-
-export type SearchCache = typeof searchCache.$inferSelect;
-export type InsertSearchCache = typeof searchCache.$inferInsert;

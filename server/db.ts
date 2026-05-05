@@ -1,6 +1,6 @@
 import { eq, and, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, douPublicacoes, InsertDOUPublicacao, searchCache, InsertSearchCache } from "../drizzle/schema";
+import { InsertUser, users, douPublicacoes, InsertDOUPublicacao } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -136,56 +136,6 @@ export async function markPublicacaoAsEmailSent(publicacaoId: number): Promise<v
       .where(eq(douPublicacoes.id, publicacaoId));
   } catch (error) {
     console.error("[Database] Failed to mark publicacao as sent:", error);
-    throw error;
-  }
-}
-
-
-// Cache functions
-export async function getCachedResults(date: string, searchType: string) {
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get cached results: database not available");
-    return null;
-  }
-
-  try {
-    const result = await db.select().from(searchCache)
-      .where(and(
-        eq(searchCache.date, date),
-        eq(searchCache.searchType, searchType)
-      ))
-      .limit(1);
-
-    if (result.length > 0) {
-      return JSON.parse(result[0].results);
-    }
-    return null;
-  } catch (error) {
-    console.error("[Database] Failed to get cached results:", error);
-    return null;
-  }
-}
-
-export async function saveCachedResults(date: string, searchType: string, results: unknown): Promise<void> {
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot save cached results: database not available");
-    return;
-  }
-
-  try {
-    const cache: InsertSearchCache = {
-      date,
-      searchType,
-      results: JSON.stringify(results),
-    };
-
-    await db.insert(searchCache).values(cache).onDuplicateKeyUpdate({
-      set: { results: JSON.stringify(results), updatedAt: new Date() },
-    });
-  } catch (error) {
-    console.error("[Database] Failed to save cached results:", error);
     throw error;
   }
 }
