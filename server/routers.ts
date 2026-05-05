@@ -454,7 +454,22 @@ export const appRouter = router({
             .default("ambas"),
         })
       )
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }) => {
+        const { getCachedResults, saveCachedResults } = await import("./db");
+        const cacheKey = input.date;
+        const isAdmin = ctx.user?.role === 'admin';
+        
+        // Try to get cached results (skip if admin)
+        if (!isAdmin) {
+          const cached = await getCachedResults(cacheKey, input.searchType);
+          if (cached) {
+            console.log(`[Cache] Usando resultados em cache para ${cacheKey}`);
+            return cached;
+          }
+        } else {
+          console.log(`[Cache] Admin ignorando cache para ${cacheKey}`);
+        }
+        
         const endDate = input.dateEnd || input.date;
         
         let results;
@@ -490,6 +505,10 @@ export const appRouter = router({
           filtered = filtered.filter((r) => r.orgPrincipal === input.orgao);
         }
 
+        // Save to cache
+        await saveCachedResults(cacheKey, input.searchType, filtered);
+        console.log(`[Cache] Resultados salvos em cache para ${cacheKey}`);
+        
         return filtered;
       }),
 

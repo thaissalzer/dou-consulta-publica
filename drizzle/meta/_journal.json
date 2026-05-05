@@ -15,6 +15,13 @@
       "when": 1774878632100,
       "tag": "0001_bent_goblin_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1777997645104,
+      "tag": "0002_jittery_spirit",
+      "breakpoints": true
     }
   ]
 }

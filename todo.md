@@ -100,3 +100,14 @@
 - [x] Backend: implementar busca combinada que retorna ambos os tipos
 - [x] Frontend: definir opção combinada como padrão ao abrir a página
 - [ ] Testes: validar busca combinada
+
+
+## Novo Requisito (30/04/2026 - Cache Diário)
+- [x] Backend: criar tabela de cache diário no banco de dados
+- [x] Backend: implementar lógica de verificação de cache
+- [x] Backend: criar procedimento tRPC para busca com cache
+- [x] Backend: permitir que administradores facçam múltiplas buscas por dia
+- [x] Frontend: criar componente CacheIndicator com indicadores visuais
+- [x] Frontend: mostrar mensagem de "resultados em cache"
+- [x] Frontend: exibir mensagem especial para administradores
+- [x] Testes: validar sistema de cache diário com permissão de admin (16 testes passando)
